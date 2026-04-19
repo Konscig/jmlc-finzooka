@@ -1,0 +1,112 @@
+# Finzooka local stack — minimal set sufficient to build + run
+# the ml-forecast service and exercise it via its gRPC health check
+# and pytest suite.
+#
+# On Windows: `docker compose up -d postgres redis` first, then
+# `docker compose up --build ml-migrate ml` (the other Finzooka
+# services — backend, bot, sentiment, data_collector — will plug
+# into this same file as they land).
+
+services:
+  postgres:
+    image: postgres:15-alpine
+    container_name: finzooka-postgres
+    environment:
+      POSTGRES_USER: finzooka
+      POSTGRES_PASSWORD: finzooka
+      POSTGRES_DB: finzooka
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U finzooka -d finzooka"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  redis:
+    image: redis:7-alpine
+    container_name: finzooka-redis
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  # One-shot migration runner. Exits 0 when the DB matches the head
+  # revision. Other services depend on service_completed_successfully
+  # so they start only after the schema is in place.
+  ml-migrate:
+    build:
+      context: ./ml_forecast
+      dockerfile: Dockerfile
+    image: finzooka/ml-forecast:dev
+    container_name: finzooka-ml-migrate
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      ML_DATABASE_URL: postgresql://finzooka:finzooka@postgres:5432/finzooka
+      ML_REDIS_URL: redis://redis:6379/0
+    command: ["alembic", "upgrade", "head"]
+    restart: "no"
+
+  ml:
+    build:
+      context: ./ml_forecast
+      dockerfile: Dockerfile
+    image: finzooka/ml-forecast:dev
+    container_name: finzooka-ml
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      ml-migrate:
+        condition: service_completed_successfully
+    environment:
+      ML_DATABASE_URL: postgresql://finzooka:finzooka@postgres:5432/finzooka
+      ML_REDIS_URL: redis://redis:6379/0
+      ML_LOG_LEVEL: INFO
+    ports:
+      - "50051:50051"
+      - "9100:9100"
+    volumes:
+      - ml_models:/data/models
+      # `archive/` is the 3 GB Kaggle dataset. Gitignored — mount it
+      # read-only if present on the host, but the service is usable
+      # for health + unit tests without it.
+      - ./archive:/data/archive:ro
+    restart: unless-stopped
+
+  ml-worker:
+    build:
+      context: ./ml_forecast
+      dockerfile: Dockerfile
+    image: finzooka/ml-forecast:dev
+    container_name: finzooka-ml-worker
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      ml-migrate:
+        condition: service_completed_successfully
+    environment:
+      ML_DATABASE_URL: postgresql://finzooka:finzooka@postgres:5432/finzooka
+      ML_REDIS_URL: redis://redis:6379/0
+      ML_LOG_LEVEL: INFO
+    volumes:
+      - ml_models:/data/models
+      - ./archive:/data/archive:ro
+    # Celery is wired in US2 (T055); for now the worker just exits
+    # gracefully. Remove --help once training/scheduler.py lands.
+    command: ["python", "-c", "print('ml-worker placeholder — Celery scheduler lands in T055')"]
+    restart: "no"
+
+volumes:
+  postgres_data:
+  ml_models:
