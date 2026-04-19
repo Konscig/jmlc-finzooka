@@ -43,7 +43,7 @@ Feature code lives under `ml_forecast/` at repo root (per plan
 - [X] T006 [P] Create `ml_forecast/config/forbidden_phrases.yaml` with initial list from spec Assumptions («гарантировано», «точно вырастет», «100%», «гарантированный доход», «without risk», «обязательно принесёт»)
 - [X] T007 Copy proto contract from `specs/001-ml-forecast-service/contracts/ml_forecast.proto` to `ml_forecast/proto/finzooka/ml/v1/ml_forecast.proto` and add `make proto` target in `ml_forecast/Makefile` that regenerates `src/ml_forecast/grpc_gen/` via `python -m grpc_tools.protoc` (gitignore generated stubs)
 - [X] T008 [P] Create `ml_forecast/.env.example` mirroring quickstart.md §2.1 (placeholders for DATABASE_URL / REDIS_URL / ARTIFACT_DIR / ARCHIVE_DIR / GRPC_PORT / FORBIDDEN_PHRASES_PATH / thresholds)
-- [ ] T009 [P] Create `ml_forecast/alembic.ini` and `ml_forecast/migrations/env.py` wired to SQLAlchemy metadata from `src/ml_forecast/storage/postgres.py`
+- [X] T009 [P] Create `ml_forecast/alembic.ini` and `ml_forecast/migrations/env.py` wired to SQLAlchemy metadata from `src/ml_forecast/storage/postgres.py`
 
 **Checkpoint**: `make proto && pip install -e .` works; `ruff check` and `mypy` run clean on an empty package.
 
