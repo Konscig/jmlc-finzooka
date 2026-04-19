@@ -59,9 +59,9 @@ Feature code lives under `ml_forecast/` at repo root (per plan
 
 - [X] T010 Implement `ml_forecast/src/ml_forecast/config.py` (pydantic-settings `Settings` class: db_url, redis_url, artifact_dir, archive_dir, grpc_port, ohlcv_max_age_multiplier=1, sentiment_max_age_seconds=3600, optuna_trials=50, walkforward_folds=5, forbidden_phrases_path)
 - [X] T011 [P] Implement `ml_forecast/src/ml_forecast/domain/timeframe.py` — `Timeframe` enum (9 values) with `.seconds` property and mapping from gRPC `finzooka.ml.v1.Timeframe`
-- [ ] T012 [P] Implement `ml_forecast/src/ml_forecast/domain/model_state.py` — `ModelState` enum with allowed-transition table (dict mapping src→{dst set}); unit test in `tests/unit/domain/test_model_state.py` verifying transitions match data-model §1.1
-- [ ] T013 [P] Implement `ml_forecast/src/ml_forecast/domain/factor.py` — `FactorContribution`, `SourceAvailability`, `FactorStatus`, `SourceFreshness` (frozen dataclasses matching data-model §5)
-- [ ] T014 [P] Implement `ml_forecast/src/ml_forecast/domain/forecast.py` — `Forecast`, `PricePoint`, `ForecastStatus` frozen dataclasses matching data-model §5
+- [X] T012 [P] Implement `ml_forecast/src/ml_forecast/domain/model_state.py` — `ModelState` enum with allowed-transition table (dict mapping src→{dst set}); unit test in `tests/unit/domain/test_model_state.py` verifying transitions match data-model §1.1
+- [X] T013 [P] Implement `ml_forecast/src/ml_forecast/domain/factor.py` — `FactorContribution`, `SourceAvailability`, `FactorStatus`, `SourceFreshness` (frozen dataclasses matching data-model §5)
+- [X] T014 [P] Implement `ml_forecast/src/ml_forecast/domain/forecast.py` — `Forecast`, `PricePoint`, `ForecastStatus` frozen dataclasses matching data-model §5
 
 ### Persistence layer
 
@@ -81,8 +81,8 @@ Feature code lives under `ml_forecast/` at repo root (per plan
 
 ### Baseline models (used by US1 explanation, US3 backtest, US4 metrics)
 
-- [ ] T025 [P] Implement `ml_forecast/src/ml_forecast/models/base.py` — abstract `BaseForecaster` with `fit(df) -> self`, `predict(df, horizon) -> list[PricePoint]`, `factor_contributions(df) -> list[FactorContribution]`, `family: ModelFamily`
-- [ ] T026 [P] Implement `ml_forecast/src/ml_forecast/models/baselines.py::NaiveBaseline` (family=BASELINE_NAIVE, predict = last close repeated) and `OhlcvOnlyBaseline` (family=BASELINE_OHLCV_ONLY, OHLCV-features only, simple linear fit on returns)
+- [X] T025 [P] Implement `ml_forecast/src/ml_forecast/models/base.py` — abstract `BaseForecaster` with `fit(df) -> self`, `predict(df, horizon) -> list[PricePoint]`, `factor_contributions(df) -> list[FactorContribution]`, `family: ModelFamily`
+- [X] T026 [P] Implement `ml_forecast/src/ml_forecast/models/baselines.py::NaiveBaseline` (family=BASELINE_NAIVE, predict = last close repeated) and `OhlcvOnlyBaseline` (family=BASELINE_OHLCV_ONLY, OHLCV-features only, simple linear fit on returns)
 
 ### Explanation formatter + forbidden-phrases filter
 
