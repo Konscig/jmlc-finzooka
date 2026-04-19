@@ -1,0 +1,46 @@
+# Finzooka ML Forecast Service — forbidden-phrases blocklist.
+#
+# The render pipeline (inference/explain.py) scans the generated
+# `explanation` string (and every `FactorContribution.name`) for any
+# of the patterns below; a match raises ExplanationForbiddenPhrase
+# and the forecast is rejected (fail-closed, per research.md R10 and
+# Principle VI — Regulatory Compliance).
+#
+# Matching is case-insensitive, substring-based (no regex). Keep
+# patterns short; prefer canonical Russian/English spellings.
+#
+# Runbook for adding/removing phrases: see docs/runbook_forbidden_phrases.md
+# (task T097).
+
+version: 1
+patterns:
+  # --- Direct promises of outcome -------------------------------------------
+  - "гарантировано"
+  - "гарантирован"
+  - "гарантированный доход"
+  - "гарантированно"
+  - "точно вырастет"
+  - "точно упадёт"
+  - "точно упадет"
+  - "100%"
+  - "без риска"
+  - "безрисково"
+  - "обязательно принесёт"
+  - "обязательно принесет"
+
+  # --- English equivalents (service may eventually serve EN clients) -------
+  - "guaranteed"
+  - "risk free"
+  - "risk-free"
+  - "will definitely"
+  - "sure to rise"
+  - "sure to fall"
+  - "no risk"
+
+  # --- Action-directing phrases (forbidden by Principle II Navigator) ------
+  - "обязательно купить"
+  - "обязательно продать"
+  - "срочно купить"
+  - "срочно продать"
+  - "must buy"
+  - "must sell"
