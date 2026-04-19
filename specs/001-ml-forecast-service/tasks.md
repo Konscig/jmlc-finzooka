@@ -36,7 +36,7 @@ Feature code lives under `ml_forecast/` at repo root (per plan
 **Purpose**: init Python package, gRPC toolchain, Docker, config.
 
 - [X] T001 Create directory skeleton `ml_forecast/src/ml_forecast/{api,domain,models,features,training,inference,storage,backtest,observability,grpc_gen}` and `ml_forecast/tests/{unit,contract,integration}` per plan.md Project Structure
-- [ ] T002 Create `ml_forecast/pyproject.toml` with Python 3.11 target, dependencies `grpcio`, `grpcio-tools`, `grpcio-health-checking`, `protobuf`, `scikit-learn`, `statsmodels`, `lightgbm`, `optuna`, `pandas`, `numpy`, `ta`, `redis`, `sqlalchemy`, `psycopg2-binary`, `celery[redis]`, `pydantic-settings`, `pytest`, `pytest-asyncio`, `grpcio-testing`, `hypothesis`, `ruff`, `mypy`
+- [X] T002 Create `ml_forecast/pyproject.toml` with Python 3.11 target, dependencies `grpcio`, `grpcio-tools`, `grpcio-health-checking`, `protobuf`, `scikit-learn`, `statsmodels`, `lightgbm`, `optuna`, `pandas`, `numpy`, `ta`, `redis`, `sqlalchemy`, `psycopg2-binary`, `celery[redis]`, `pydantic-settings`, `pytest`, `pytest-asyncio`, `grpcio-testing`, `hypothesis`, `ruff`, `mypy`
 - [ ] T003 [P] Create `ml_forecast/Dockerfile` (multistage: builder compiles proto stubs, runtime image based on `python:3.11-slim`; non-root user; read-only archive volume mount point)
 - [ ] T004 [P] Create `ml_forecast/docker-compose.snippet.yaml` — services `ml` (gRPC :50051) and `ml-worker` (Celery), volumes `./archive:/data/archive:ro` and `ml_models:/data/models`, env from `.env.local`
 - [ ] T005 [P] Configure Ruff + MyPy in `ml_forecast/pyproject.toml` (line-length 100, target-version py311, mypy strict)
