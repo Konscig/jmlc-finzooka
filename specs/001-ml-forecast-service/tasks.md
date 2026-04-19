@@ -58,7 +58,7 @@ Feature code lives under `ml_forecast/` at repo root (per plan
 ### Config & domain core
 
 - [X] T010 Implement `ml_forecast/src/ml_forecast/config.py` (pydantic-settings `Settings` class: db_url, redis_url, artifact_dir, archive_dir, grpc_port, ohlcv_max_age_multiplier=1, sentiment_max_age_seconds=3600, optuna_trials=50, walkforward_folds=5, forbidden_phrases_path)
-- [ ] T011 [P] Implement `ml_forecast/src/ml_forecast/domain/timeframe.py` — `Timeframe` enum (9 values) with `.seconds` property and mapping from gRPC `finzooka.ml.v1.Timeframe`
+- [X] T011 [P] Implement `ml_forecast/src/ml_forecast/domain/timeframe.py` — `Timeframe` enum (9 values) with `.seconds` property and mapping from gRPC `finzooka.ml.v1.Timeframe`
 - [ ] T012 [P] Implement `ml_forecast/src/ml_forecast/domain/model_state.py` — `ModelState` enum with allowed-transition table (dict mapping src→{dst set}); unit test in `tests/unit/domain/test_model_state.py` verifying transitions match data-model §1.1
 - [ ] T013 [P] Implement `ml_forecast/src/ml_forecast/domain/factor.py` — `FactorContribution`, `SourceAvailability`, `FactorStatus`, `SourceFreshness` (frozen dataclasses matching data-model §5)
 - [ ] T014 [P] Implement `ml_forecast/src/ml_forecast/domain/forecast.py` — `Forecast`, `PricePoint`, `ForecastStatus` frozen dataclasses matching data-model §5
