@@ -38,11 +38,11 @@ Feature code lives under `ml_forecast/` at repo root (per plan
 - [X] T001 Create directory skeleton `ml_forecast/src/ml_forecast/{api,domain,models,features,training,inference,storage,backtest,observability,grpc_gen}` and `ml_forecast/tests/{unit,contract,integration}` per plan.md Project Structure
 - [X] T002 Create `ml_forecast/pyproject.toml` with Python 3.11 target, dependencies `grpcio`, `grpcio-tools`, `grpcio-health-checking`, `protobuf`, `scikit-learn`, `statsmodels`, `lightgbm`, `optuna`, `pandas`, `numpy`, `ta`, `redis`, `sqlalchemy`, `psycopg2-binary`, `celery[redis]`, `pydantic-settings`, `pytest`, `pytest-asyncio`, `grpcio-testing`, `hypothesis`, `ruff`, `mypy`
 - [X] T003 [P] Create `ml_forecast/Dockerfile` (multistage: builder compiles proto stubs, runtime image based on `python:3.11-slim`; non-root user; read-only archive volume mount point)
-- [ ] T004 [P] Create `ml_forecast/docker-compose.snippet.yaml` — services `ml` (gRPC :50051) and `ml-worker` (Celery), volumes `./archive:/data/archive:ro` and `ml_models:/data/models`, env from `.env.local`
+- [X] T004 [P] Create `ml_forecast/docker-compose.snippet.yaml` — services `ml` (gRPC :50051) and `ml-worker` (Celery), volumes `./archive:/data/archive:ro` and `ml_models:/data/models`, env from `.env.local`
 - [X] T005 [P] Configure Ruff + MyPy in `ml_forecast/pyproject.toml` (line-length 100, target-version py311, mypy strict)
 - [ ] T006 [P] Create `ml_forecast/config/forbidden_phrases.yaml` with initial list from spec Assumptions («гарантировано», «точно вырастет», «100%», «гарантированный доход», «without risk», «обязательно принесёт»)
 - [ ] T007 Copy proto contract from `specs/001-ml-forecast-service/contracts/ml_forecast.proto` to `ml_forecast/proto/finzooka/ml/v1/ml_forecast.proto` and add `make proto` target in `ml_forecast/Makefile` that regenerates `src/ml_forecast/grpc_gen/` via `python -m grpc_tools.protoc` (gitignore generated stubs)
-- [ ] T008 [P] Create `ml_forecast/.env.example` mirroring quickstart.md §2.1 (placeholders for DATABASE_URL / REDIS_URL / ARTIFACT_DIR / ARCHIVE_DIR / GRPC_PORT / FORBIDDEN_PHRASES_PATH / thresholds)
+- [X] T008 [P] Create `ml_forecast/.env.example` mirroring quickstart.md §2.1 (placeholders for DATABASE_URL / REDIS_URL / ARTIFACT_DIR / ARCHIVE_DIR / GRPC_PORT / FORBIDDEN_PHRASES_PATH / thresholds)
 - [ ] T009 [P] Create `ml_forecast/alembic.ini` and `ml_forecast/migrations/env.py` wired to SQLAlchemy metadata from `src/ml_forecast/storage/postgres.py`
 
 **Checkpoint**: `make proto && pip install -e .` works; `ruff check` and `mypy` run clean on an empty package.

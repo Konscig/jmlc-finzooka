@@ -1,0 +1,51 @@
+# Snippet — merge these service definitions into the top-level
+# docker-compose.yaml of the Finzooka stack (adjacent to backend/, bot/, etc).
+#
+# Assumes `postgres` and `redis` services are defined in the same stack.
+
+services:
+  ml:
+    build:
+      context: ./ml_forecast
+      dockerfile: Dockerfile
+    image: finzooka/ml-forecast:dev
+    container_name: finzooka-ml
+    depends_on:
+      - postgres
+      - redis
+    env_file:
+      - ./ml_forecast/.env.local
+    volumes:
+      - ./archive:/data/archive:ro
+      - ml_models:/data/models
+    ports:
+      - "50051:50051"   # gRPC
+      - "9100:9100"     # Prometheus exporter
+    restart: unless-stopped
+
+  ml-worker:
+    build:
+      context: ./ml_forecast
+      dockerfile: Dockerfile
+    image: finzooka/ml-forecast:dev
+    container_name: finzooka-ml-worker
+    depends_on:
+      - postgres
+      - redis
+    env_file:
+      - ./ml_forecast/.env.local
+    volumes:
+      - ./archive:/data/archive:ro
+      - ml_models:/data/models
+    command:
+      - "celery"
+      - "-A"
+      - "ml_forecast.training.scheduler"
+      - "worker"
+      - "--beat"
+      - "--loglevel=INFO"
+      - "--concurrency=1"
+    restart: unless-stopped
+
+volumes:
+  ml_models:
