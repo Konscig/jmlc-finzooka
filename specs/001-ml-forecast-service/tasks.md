@@ -86,13 +86,13 @@ Feature code lives under `ml_forecast/` at repo root (per plan
 
 ### Explanation formatter + forbidden-phrases filter
 
-- [ ] T027 Implement `ml_forecast/src/ml_forecast/inference/explain.py::render(forecast, metrics) -> str` — template from research.md R10. «Значимый фактор» = `abs(contribution) > EXPLAIN_MIN_CONTRIBUTION` (константа, default 0.01). Условие SC-006: ≥3 значимых фактора с `status != UNAVAILABLE`; иначе `raises Unexplainable`. В тексте explanation перечисляются top-3 по убыванию `|contribution|`
-- [ ] T028 Implement `ml_forecast/src/ml_forecast/inference/explain.py::check_forbidden(text, loader)` — loads YAML once, substring-scan case-insensitive, raises `ExplanationForbiddenPhrase` on hit (FR-019, fail-closed per R10)
-- [ ] T029 [P] Unit test `ml_forecast/tests/unit/inference/test_explain_forbidden.py` — for every phrase in `config/forbidden_phrases.yaml` + each uppercase/lowercase/mixed permutation, `check_forbidden` raises; clean sentences pass
+- [X] T027 Implement `ml_forecast/src/ml_forecast/inference/explain.py::render(forecast, metrics) -> str` — template from research.md R10. «Значимый фактор» = `abs(contribution) > EXPLAIN_MIN_CONTRIBUTION` (константа, default 0.01). Условие SC-006: ≥3 значимых фактора с `status != UNAVAILABLE`; иначе `raises Unexplainable`. В тексте explanation перечисляются top-3 по убыванию `|contribution|`
+- [X] T028 Implement `ml_forecast/src/ml_forecast/inference/explain.py::check_forbidden(text, loader)` — loads YAML once, substring-scan case-insensitive, raises `ExplanationForbiddenPhrase` on hit (FR-019, fail-closed per R10)
+- [X] T029 [P] Unit test `ml_forecast/tests/unit/inference/test_explain_forbidden.py` — for every phrase in `config/forbidden_phrases.yaml` + each uppercase/lowercase/mixed permutation, `check_forbidden` raises; clean sentences pass
 
 ### Freshness guards (FR-002b, used by US1)
 
-- [ ] T030 [P] Implement `ml_forecast/src/ml_forecast/inference/freshness.py` — `check_ohlcv(ticker, timeframe, now) -> SourceFreshness`, `check_sentiment(ticker, now) -> SourceFreshness`; uses Redis `:ts` suffix (R2), thresholds from `Settings`
+- [X] T030 [P] Implement `ml_forecast/src/ml_forecast/inference/freshness.py` — `check_ohlcv(ticker, timeframe, now) -> SourceFreshness`, `check_sentiment(ticker, now) -> SourceFreshness`; uses Redis `:ts` suffix (R2), thresholds from `Settings`
 
 ### gRPC server skeleton
 
