@@ -65,11 +65,11 @@ Feature code lives under `ml_forecast/` at repo root (per plan
 
 ### Persistence layer
 
-- [ ] T015 [P] Implement `ml_forecast/src/ml_forecast/storage/postgres.py` — SQLAlchemy `Base`, `create_engine` from settings, session factory
-- [ ] T016 Create Alembic migration `ml_forecast/migrations/versions/001_schema_ml.py` — schema `ml`, tables `model_registry`, `training_run`, `inference_log`, `shadow_prediction`, `backtest_report`, `classification_run` with all columns, types, FKs, and indexes per data-model.md §1; **partial UK** `(ticker_id, timeframe) WHERE state='production'` on `model_registry`
-- [ ] T017 [P] Implement ORM models in `ml_forecast/src/ml_forecast/storage/orm.py` (one class per table, matches T016)
-- [ ] T018 [P] Implement `ml_forecast/src/ml_forecast/storage/redis_client.py` — wrapper with `get_ohlcv_last(ticker, timeframe)` / `get_sentiment_agg(ticker)` returning parsed payload + timestamp; expects keys per research.md R2
-- [ ] T019 [P] Implement `ml_forecast/src/ml_forecast/storage/artifact_store.py` — `save(model, ticker, timeframe, version) -> Path`, `load(path)`, `set_production_symlink(ticker, timeframe, version)` using atomic `os.replace`, SHA256 computation
+- [X] T015 [P] Implement `ml_forecast/src/ml_forecast/storage/postgres.py` — SQLAlchemy `Base`, `create_engine` from settings, session factory
+- [X] T016 Create Alembic migration `ml_forecast/migrations/versions/001_schema_ml.py` — schema `ml`, tables `model_registry`, `training_run`, `inference_log`, `shadow_prediction`, `backtest_report`, `classification_run` with all columns, types, FKs, and indexes per data-model.md §1; **partial UK** `(ticker_id, timeframe) WHERE state='production'` on `model_registry`
+- [X] T017 [P] Implement ORM models in `ml_forecast/src/ml_forecast/storage/orm.py` (one class per table, matches T016)
+- [X] T018 [P] Implement `ml_forecast/src/ml_forecast/storage/redis_client.py` — wrapper with `get_ohlcv_last(ticker, timeframe)` / `get_sentiment_agg(ticker)` returning parsed payload + timestamp; expects keys per research.md R2
+- [X] T019 [P] Implement `ml_forecast/src/ml_forecast/storage/artifact_store.py` — `save(model, ticker, timeframe, version) -> Path`, `load(path)`, `set_production_symlink(ticker, timeframe, version)` using atomic `os.replace`, SHA256 computation
 
 ### CSV validation & feature engineering
 
