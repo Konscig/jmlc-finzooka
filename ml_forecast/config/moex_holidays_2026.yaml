@@ -1,0 +1,24 @@
+# MOEX holidays — used by inference for the outside_trading_hours advisory
+# flag (T045). Trading session: 10:00–18:50 MSK on weekdays not listed here.
+# Source: https://www.moex.com/s1167 (update yearly).
+#
+# Format: YYYY-MM-DD per line under `holidays`.
+
+year: 2026
+tz: "Europe/Moscow"
+session_start: "10:00"
+session_end: "18:50"
+
+holidays:
+  - 2026-01-01
+  - 2026-01-02
+  - 2026-01-05
+  - 2026-01-06
+  - 2026-01-07
+  - 2026-01-08
+  - 2026-02-23
+  - 2026-03-09  # March 8 observed
+  - 2026-05-01
+  - 2026-05-11  # May 9 observed
+  - 2026-06-12
+  - 2026-11-04

@@ -96,9 +96,9 @@ Feature code lives under `ml_forecast/` at repo root (per plan
 
 ### gRPC server skeleton
 
-- [ ] T031 Implement `ml_forecast/src/ml_forecast/api/health.py` — `HealthServicer` (grpc.health.v1) reporting SERVING when Redis.ping() and DB.execute("SELECT 1") both succeed
-- [ ] T032 Implement `ml_forecast/src/ml_forecast/main.py` — gRPC server bootstrap: `ThreadPoolExecutor(max_workers=8)` (R12), registers Health + placeholder `MlForecastServicer`, graceful shutdown, listens on `settings.grpc_port`
-- [ ] T033 [P] Contract test `ml_forecast/tests/contract/test_health.py` — spin server, `grpc.health.v1.Health/Check` returns SERVING; stop Redis stub → returns NOT_SERVING
+- [X] T031 Implement `ml_forecast/src/ml_forecast/api/health.py` — `HealthServicer` (grpc.health.v1) reporting SERVING when Redis.ping() and DB.execute("SELECT 1") both succeed
+- [X] T032 Implement `ml_forecast/src/ml_forecast/main.py` — gRPC server bootstrap: `ThreadPoolExecutor(max_workers=8)` (R12), registers Health + placeholder `MlForecastServicer`, graceful shutdown, listens on `settings.grpc_port`
+- [X] T033 [P] Contract test `ml_forecast/tests/contract/test_health.py` — spin server, `grpc.health.v1.Health/Check` returns SERVING; stop Redis stub → returns NOT_SERVING
 
 **Checkpoint**: `docker compose up ml` ⇒ healthy; `pytest tests/unit tests/contract/test_health.py` green; migration applies cleanly; property test for anti look-ahead passes.
 
