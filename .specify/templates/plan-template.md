@@ -31,7 +31,82 @@
 
 *GATE: Must pass before Phase 0 research. Re-check after Phase 1 design.*
 
-[Gates determined based on constitution file]
+Mark each gate ✅ Pass / ⚠️ Deviation (log in Complexity Tracking) / N/A.
+Gates derive from `.specify/memory/constitution.md` v1.0.0 — see that file for
+full rationale. Conflict priority: VI > I > II > V > III > IV > VII.
+
+### I. Explainability Gate (NON-NEGOTIABLE)
+
+- [ ] Every new signal, recommendation, or prediction surfaces a human-readable
+      `explanation` (2–3 sentences) AND a `factors` array listing concrete
+      data points (sentiment score, RSI, news headline, etc.)
+- [ ] No output path produces a "black box" value that reaches the user without
+      an explanation — if the model cannot explain it, it is suppressed
+
+### II. Navigator Gate
+
+- [ ] All user-facing copy frames output as "recommendation" / "suggestion",
+      never "instruction" / "strategy" / guaranteed return
+- [ ] No code path executes a trade autonomously without explicit per-action
+      user confirmation
+- [ ] Every actionable signal includes stop-loss and take-profit levels
+- [ ] Broker deep-links open the ticker view only (no pre-filled order forms
+      unless user explicitly confirmed)
+
+### III. Multi-Factor Gate
+
+- [ ] Signal generation combines ≥2 independent sources: (a) OHLCV +
+      technical indicators, plus (b) sentiment and/or news
+- [ ] Sentiment aggregation uses >1 source (T-Pulse + news channels)
+- [ ] Graceful degradation defined: when a source is unavailable, fallback is
+      specified AND reduced confidence is surfaced in the explanation
+- [ ] `factors` JSON enumerates every contributing source with its score
+
+### IV. Telegram-Native UX Gate
+
+- [ ] Feature is reachable entirely within Telegram (Bot commands and/or
+      Mini App) — no separate app or browser-only flow
+- [ ] Both formats supported where relevant: "numbers in chat" (quick text)
+      AND "visuals in Mini App" (interactive charts with overlay)
+- [ ] Notifications are user-configurable (trigger type + frequency); no
+      unsolicited pushes
+- [ ] Any onboarding path completes in ≤2 minutes via chat
+
+### V. Model Integrity & Observability Gate
+
+- [ ] New ML artifacts expose MAPE and win rate daily per ticker in the
+      admin panel
+- [ ] Inference latency is instrumented; alerts fire when avg >30s
+- [ ] Every new signal records `mape_at_generation`
+- [ ] Pipeline health-checks (data collector / sentiment / ML engine) run
+      ≥ every minute with admin alerts on failure
+- [ ] Retraining path exposes before/after metric comparison
+
+### VI. Regulatory Compliance Gate (HIGHEST PRIORITY)
+
+- [ ] Every user-facing signal carries the disclaimer
+      «Не является инвестиционной рекомендацией»
+- [ ] No copy implies guaranteed returns or specific financial outcomes
+- [ ] Personal data scope stays within 152-ФЗ (Telegram ID only); deletion
+      request cascades to all associated data
+- [ ] T-Invest API tokens stored in env vars (MVP) or encrypted storage
+      (production) — never in code, logs, or plaintext DB columns
+
+### VII. Simplicity & MVP Discipline Gate
+
+- [ ] Scope matches the current release tier (MVP / v1.1 / v2.0 per USM);
+      no features pulled forward without explicit rescoping
+- [ ] No new database/broker/queue introduced — reuses PostgreSQL, Redis,
+      Celery already in stack
+- [ ] Deployable via existing Docker Compose (no Kubernetes/cloud
+      orchestration)
+- [ ] Runs within home-server budget (4 CPU, 12GB RAM, GTX 1650); any
+      horizontal-scaling assumption is justified by projected DAU >100
+- [ ] Ticker universe stays on blue chips unless release tier permits
+      second-tier
+
+**Deviations**: any ⚠️ above MUST be logged in Complexity Tracking with
+justification and a rejected simpler alternative.
 
 ## Project Structure
 
