@@ -54,4 +54,5 @@ def test_accepts_multi_source() -> None:
         feat = sentiment_score("SBER")
     assert feat.status is FactorStatus.OK
     assert feat.value is not None
-    assert feat.value == pytest.approx(0.42)
+    # pytest 9 refuses to subtract float from Decimal inside approx(); convert.
+    assert float(feat.value) == pytest.approx(0.42)

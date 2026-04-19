@@ -21,9 +21,25 @@ def _reset_cache() -> None:
     get_settings.cache_clear()
 
 
+def _config_path() -> Path:
+    """Locate config/forbidden_phrases.yaml — works both in source tree
+    (ml_forecast/config/...) and inside the container (/app/config/...)."""
+
+    import os
+
+    explicit = os.environ.get("ML_FORBIDDEN_PHRASES_PATH")
+    if explicit and Path(explicit).exists():
+        return Path(explicit)
+    for start in (Path(__file__).resolve(), Path.cwd()):
+        for parent in [start] + list(start.parents):
+            candidate = parent / "config" / "forbidden_phrases.yaml"
+            if candidate.exists():
+                return candidate
+    raise FileNotFoundError("config/forbidden_phrases.yaml not found")
+
+
 def _load_shipped_patterns() -> list[str]:
-    path = Path(__file__).resolve().parents[4] / "config" / "forbidden_phrases.yaml"
-    raw = yaml.safe_load(path.read_text())
+    raw = yaml.safe_load(_config_path().read_text())
     return [p for p in raw["patterns"] if p]
 
 
