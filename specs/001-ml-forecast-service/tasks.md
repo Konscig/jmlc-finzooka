@@ -121,8 +121,8 @@ Feature code lives under `ml_forecast/` at repo root (per plan
 
 ### Implementation for US1
 
-- [ ] T040 [US1] Implement `ml_forecast/src/ml_forecast/models/armaexo.py` — порт из ноутбука `ML_ТМБ.ipynb`: AR порядок + MA + экзогенные признаки из R5; исправлен anti look-ahead (фичи считаются до `t`, не после); публикует `factor_contributions` через коэффициенты модели нормированные к sum(|.|)≈1
-- [ ] T041 [US1] Implement `ml_forecast/src/ml_forecast/models/lightgbm_model.py` — fallback из R4; feature importance через SHAP `TreeExplainer`, маппится в `FactorContribution`
+- [X] T040 [US1] Implement `ml_forecast/src/ml_forecast/models/armaexo.py` — порт из ноутбука `ML_ТМБ.ipynb`: AR порядок + MA + экзогенные признаки из R5; исправлен anti look-ahead (фичи считаются до `t`, не после); публикует `factor_contributions` через коэффициенты модели нормированные к sum(|.|)≈1
+- [X] T041 [US1] Implement `ml_forecast/src/ml_forecast/models/lightgbm_model.py` — fallback из R4; feature importance через SHAP `TreeExplainer`, маппится в `FactorContribution`
 - [ ] T042 [P] [US1] Implement `ml_forecast/src/ml_forecast/training/walkforward.py::WalkForwardValidator` (expanding window, ≥5 фолдов, 1 мес на D1, 2 нед на M15 — R3); возвращает `metrics_per_fold`
 - [ ] T043 [US1] Implement `ml_forecast/src/ml_forecast/training/hyperparam.py::tune(model_family, X, y, n_trials, time_budget_s)` — Optuna TPE + median pruner (R4); используется `WalkForwardValidator` как целевая функция
 - [ ] T044 [US1] Implement `ml_forecast/src/ml_forecast/inference/registry.py::ModelRegistry` — `get_production(ticker, timeframe) -> ModelHandle`, `get_shadow_list(...)`, `load_artifact(handle)`, `register_new(...)`, `promote(...)` (atomic transaction + symlink swap per R6); использует ORM из T017
