@@ -47,7 +47,9 @@ def _maybe_register_ml_forecast(server: grpc.Server) -> None:
     """
 
     try:
+        from ml_forecast.api.admin_service import AdminServicer
         from ml_forecast.api.forecast_service import ForecastServicer
+        from ml_forecast.api.train_service import TrainServicer
         from ml_forecast.grpc_gen.finzooka.ml.v1 import (
             ml_forecast_pb2_grpc,  # noqa: F401 — ensures import side-effect
         )
@@ -61,14 +63,18 @@ def _maybe_register_ml_forecast(server: grpc.Server) -> None:
     class _Servicer(
         ml_forecast_pb2_grpc.MlForecastServicer,  # type: ignore[misc]
         ForecastServicer,
+        TrainServicer,
+        AdminServicer,
     ):
-        """Concrete MlForecast servicer composed of the generated stub
-        + our ForecastServicer implementation. Unimplemented RPCs (Train,
-        Backtest, admin) fall through to UNIMPLEMENTED gRPC status.
+        """Concrete MlForecast servicer composed of the generated stub and
+        our Forecast / Train / Admin servicers. Backtest + Classify RPCs
+        fall through to UNIMPLEMENTED gRPC status until their phases land.
         """
 
     ml_forecast_pb2_grpc.add_MlForecastServicer_to_server(_Servicer(), server)
-    log.info("finzooka.ml.v1.MlForecast Forecast RPC registered")
+    log.info(
+        "finzooka.ml.v1.MlForecast: Forecast + Train + Admin RPCs registered"
+    )
 
 
 def serve() -> None:
