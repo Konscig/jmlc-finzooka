@@ -117,7 +117,7 @@ Feature code lives under `ml_forecast/` at repo root (per plan
 - [X] T036 [P] [US1] Contract test `ml_forecast/tests/contract/test_forecast_horizon_out_of_range.py` — US-1 AC3 (horizon > max_trained → FAILED_PRECONDITION, detail='horizon_out_of_range', указан допустимый max)
 - [X] T037 [P] [US1] Contract test `ml_forecast/tests/contract/test_forecast_degraded_sentiment.py` — US-1 AC4 (Redis sentiment ключ удалён → status=DEGRADED, `sentiment` in factors has status=UNAVAILABLE, explanation содержит маркер сниженной уверенности)
 - [X] T038 [P] [US1] Contract test `ml_forecast/tests/contract/test_forecast_stale_ohlcv.py` — OHLCV `:ts` > 1 бар назад → FAILED_PRECONDITION, detail='stale_ohlcv'
-- [ ] T039 [P] [US1] Integration test `ml_forecast/tests/integration/test_forecast_end_to_end.py` — реальный Postgres + Redis контейнер, предобученная ARMAExo на `archive/D1/SBER_D1.csv`, запрос прогноза, проверка schema и не-пустого `suggested_stop_loss`/`suggested_take_profit`
+- [X] T039 [P] [US1] Integration test `ml_forecast/tests/integration/test_forecast_end_to_end.py` — реальный Postgres + Redis контейнер, предобученная ARMAExo на `archive/D1/SBER_D1.csv`, запрос прогноза, проверка schema и не-пустого `suggested_stop_loss`/`suggested_take_profit`
 
 ### Implementation for US1
 
