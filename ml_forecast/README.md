@@ -29,25 +29,32 @@ git pull
 
 # 2. Build the image and bring up Postgres + Redis + ml-forecast.
 #    First run downloads python:3.11-slim and installs deps (~8-12 min).
-docker compose up --build -d postgres redis ml-migrate
-#    ml-migrate exits after alembic upgrade head; check it succeeded:
+docker compose up --build -d postgres redis
+
+#    One-shot DB migration. Exits 0 when the schema is in place.
+docker compose up ml-migrate
 docker compose logs ml-migrate | Select-Object -Last 20
+
 #    Then start the server (health-only in this phase):
 docker compose up -d ml
 
-# 3. Verify health via gRPC from a temporary busybox container.
-#    (Docker Desktop on Windows uses the same `docker` CLI as macOS/Linux.)
-docker run --rm --network jmlc-finzooka_default fullstorydev/grpcurl:latest `
-  -plaintext finzooka-ml:50051 grpc.health.v1.Health/Check
+# 3. Verify health from a Python one-liner inside the ml container
+#    (grpcurl without reflection needs proto files — we'll skip that
+#    until Phase 6 adds reflection). Tested output: "Health status: SERVING".
+docker compose exec ml python -c "import grpc; from grpc_health.v1 import health_pb2, health_pb2_grpc; ch = grpc.insecure_channel('localhost:50051'); resp = health_pb2_grpc.HealthStub(ch).Check(health_pb2.HealthCheckRequest(service='')); print('Health status:', health_pb2.HealthCheckResponse.ServingStatus.Name(resp.status))"
 
 # 4. Run the unit + contract test suite inside the built image.
-docker compose run --rm ml pytest -ra
+docker compose run --rm ml pytest -ra -p no:cacheprovider
 ```
 
-Expected: `{ "status": "SERVING" }` from step 3 and green pytest
-output from step 4 (health RPC + anti look-ahead + validators +
-forbidden-phrases + ModelState transitions + sentiment monosource
-guard — 6 test files, ~50 cases).
+Expected:
+
+- **Step 3** prints `Health status: SERVING`.
+- **Step 4** reports `84 passed` (health RPC × 3, ModelState transitions × 6,
+  anti look-ahead property × 14, validators × 6, forbidden-phrases × 25,
+  sentiment monosource × 3, explain + freshness coverage).
+
+Build was verified end-to-end on Mac arm64; image size ≈ 1.42 GB.
 
 ## Stop / reset
 

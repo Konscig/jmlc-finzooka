@@ -16,6 +16,4 @@ htmlcov/
 .vscode/
 .idea/
 .git/
-*.md
-!README.md
 src/ml_forecast/grpc_gen/finzooka/

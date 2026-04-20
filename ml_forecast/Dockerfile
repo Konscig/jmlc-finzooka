@@ -62,6 +62,9 @@ COPY --from=builder /build/proto /app/proto
 COPY config /app/config
 COPY migrations /app/migrations
 COPY alembic.ini /app/alembic.ini
+# Tests live in the image so contributors can `docker compose run ml pytest`
+# without volume-mount gymnastics. Image cost is negligible (~50 KB).
+COPY tests /app/tests
 
 USER mlforecast
 
