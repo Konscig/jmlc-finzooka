@@ -176,14 +176,14 @@ Feature code lives under `ml_forecast/` at repo root (per plan
 
 ### Tests for US3
 
-- [ ] T066 [P] [US3] Contract test `ml_forecast/tests/contract/test_backtest_basic.py` — валидный период, 3 набора метрик присутствуют, `signal_count` > 0
-- [ ] T067 [P] [US3] Integration test `ml_forecast/tests/integration/test_backtest_beats_baselines.py` — на `archive/D1/SBER_D1.csv`, период последние 6 мес; assert model_metrics.mape < naive.mape * 0.9 AND < ohlcv_only.mape * 0.9 (SC-009)
+- [X] T066 [P] [US3] Contract test `ml_forecast/tests/contract/test_backtest_basic.py` — валидный период, 3 набора метрик присутствуют, `signal_count` > 0
+- [X] T067 [P] [US3] Integration test `ml_forecast/tests/integration/test_backtest_beats_baselines.py` — на `archive/D1/SBER_D1.csv`, период последние 6 мес; assert model_metrics.mape < naive.mape * 0.9 AND < ohlcv_only.mape * 0.9 (SC-009)
 
 ### Implementation for US3
 
-- [ ] T068 [US3] Implement `ml_forecast/src/ml_forecast/backtest/runner.py::run(model_handle, period_start, period_end)` — sliding eval: для каждого бара в периоде воспроизводит `ForecastServicer` логику на историческом срезе (anti look-ahead!), параллельно NaiveBaseline (T026) и OhlcvOnlyBaseline (T026); вычисляет win rate через фиксированные правила SL/TP; возвращает все 3 MetricsBundle + массив (предсказ, факт, t)
-- [ ] T069 [US3] Implement `ml_forecast/src/ml_forecast/api/backtest_service.py::BacktestServicer.Backtest` — вызывает T068, persist в `backtest_report` (T017), возвращает proto
-- [ ] T070 [US3] Wire BacktestServicer в `main.py`
+- [X] T068 [US3] Implement `ml_forecast/src/ml_forecast/backtest/runner.py::run(model_handle, period_start, period_end)` — sliding eval: для каждого бара в периоде воспроизводит `ForecastServicer` логику на историческом срезе (anti look-ahead!), параллельно NaiveBaseline (T026) и OhlcvOnlyBaseline (T026); вычисляет win rate через фиксированные правила SL/TP; возвращает все 3 MetricsBundle + массив (предсказ, факт, t)
+- [X] T069 [US3] Implement `ml_forecast/src/ml_forecast/api/backtest_service.py::BacktestServicer.Backtest` — вызывает T068, persist в `backtest_report` (T017), возвращает proto
+- [X] T070 [US3] Wire BacktestServicer в `main.py`
 
 **Checkpoint**: бэктест даёт стабильное превосходство над baselines на SBER/D1; отчёт читается из БД.
 
@@ -203,11 +203,11 @@ Feature code lives under `ml_forecast/` at repo root (per plan
 
 ### Implementation for US4
 
-- [ ] T074 [P] [US4] Implement `ml_forecast/src/ml_forecast/observability/metrics.py` — `prometheus_client` экспортер на `:9100`: `ml_forecast_latency_seconds` (histogram), `ml_forecast_forecast_total{status}` (counter), `ml_forecast_train_duration_seconds` (histogram), `ml_forecast_stale_rate{source}` (gauge), `ml_forecast_current_mape{ticker,timeframe}` (gauge)
-- [ ] T075 [US4] Hook metrics в `forecast_service.py` (T045): measure latency, increment status counter, update stale gauges
+- [X] T074 [P] [US4] Implement `ml_forecast/src/ml_forecast/observability/metrics.py` — `prometheus_client` экспортер на `:9100`: `ml_forecast_latency_seconds` (histogram), `ml_forecast_forecast_total{status}` (counter), `ml_forecast_train_duration_seconds` (histogram), `ml_forecast_stale_rate{source}` (gauge), `ml_forecast_current_mape{ticker,timeframe}` (gauge)
+- [X] T075 [US4] Hook metrics в `forecast_service.py` (T045): measure latency, increment status counter, update stale gauges
 - [ ] T076 [P] [US4] Celery task `recompute_daily_metrics` (кожен ранок MSK): по каждой production-модели — последние 30 resolved `inference_log` → MAPE, win rate; UPDATE `model_registry.current_mape` + INSERT row in shared `model_metrics` table (R8, FR-016)
 - [ ] T077 [P] [US4] Celery periodic task `health_check` (каждую минуту, FR-017): проверяет (а) Redis reachable, (б) Postgres reachable, (в) нет production-модели старше 14 дней без trained; UPDATE `pipeline_statuses.ml_forecast` и отсылает алерт через `log.error` (перехват логгером → Telegram-бот admin — вне scope этой фичи)
-- [ ] T078 [P] [US4] Create `ml_forecast/config/alerts/prometheus_rules.yaml` — 3 алерта: `MlForecastLatencyHigh` (avg_5m > 30s), `MlForecastStaleRateHigh` (> 20% за 15 мин), `MlForecastHealthDown` (health-check failure) — US-4 AC1/AC2
+- [X] T078 [P] [US4] Create `ml_forecast/config/alerts/prometheus_rules.yaml` — 3 алерта: `MlForecastLatencyHigh` (avg_5m > 30s), `MlForecastStaleRateHigh` (> 20% за 15 мин), `MlForecastHealthDown` (health-check failure) — US-4 AC1/AC2
 - [ ] T079 [US4] Wire `recompute_daily_metrics` и `health_check` в Celery Beat schedule (T055)
 
 **Checkpoint**: dashboards read metrics; `inference_log` fills; alerts fire under simulated slow inference.

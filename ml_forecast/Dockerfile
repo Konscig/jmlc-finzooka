@@ -20,7 +20,12 @@ COPY pyproject.toml ./
 COPY src ./src
 COPY proto ./proto
 
-RUN pip install --upgrade pip \
+# BuildKit cache mount on pip's wheel cache so re-installs after src/ edits
+# skip downloading + compiling wheels for the heavy deps (lightgbm, shap,
+# numpy, etc.). pip install still re-registers our package metadata but
+# that takes seconds, not minutes.
+RUN --mount=type=cache,target=/root/.cache/pip \
+    pip install --upgrade pip \
  && pip install ".[dev]" \
  && python -m grpc_tools.protoc \
         -I proto \

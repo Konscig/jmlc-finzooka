@@ -57,6 +57,7 @@ from ml_forecast.inference.explain import (
     Unexplainable,
     render,
 )
+from ml_forecast.observability import metrics as obs_metrics
 from ml_forecast.storage import redis_client
 from ml_forecast.storage.orm import InferenceLog
 from ml_forecast.storage.postgres import session_scope
@@ -177,8 +178,15 @@ class ForecastServicer:  # inherits MlForecastServicer via monkey-patch in main
                 horizon=horizon,
                 started=started,
             )
+            latency = time.perf_counter() - started
+            outcome = "ok" if response.status == pb2.FORECAST_STATUS_OK else "degraded"
+            obs_metrics.forecast_total.labels(status=outcome).inc()
+            obs_metrics.forecast_latency_seconds.labels(status=outcome).observe(latency)
             return response
         except _RejectForecast as exc:
+            latency = time.perf_counter() - started
+            obs_metrics.forecast_total.labels(status=exc.status_key).inc()
+            obs_metrics.forecast_latency_seconds.labels(status=exc.status_key).observe(latency)
             return _abort(
                 context,
                 exc.code,
