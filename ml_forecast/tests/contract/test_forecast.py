@@ -342,24 +342,28 @@ def test_forecast_model_not_found(make_request, servicer):
     assert ctx.code is grpc.StatusCode.NOT_FOUND
 
 
-def test_forecast_model_stale_flag(make_request, servicer):
-    """T095 fragment — model_stale=true when promoted_at > 14 days ago."""
-
-    old_handle = _handle()
-    old_handle = ModelHandle(
-        id=old_handle.id,
-        ticker=old_handle.ticker,
-        timeframe=old_handle.timeframe,
-        model_version=old_handle.model_version,
-        model_family=old_handle.model_family,
-        state=old_handle.state,
-        artifact_path=old_handle.artifact_path,
-        current_mape=old_handle.current_mape,
-        feature_set_version=old_handle.feature_set_version,
-        promoted_at=datetime.utcnow() - timedelta(days=30),
-        created_at=old_handle.created_at,
+def _with_handle(handle: ModelHandle, *, promoted_at: datetime) -> ModelHandle:
+    return ModelHandle(
+        id=handle.id,
+        ticker=handle.ticker,
+        timeframe=handle.timeframe,
+        model_version=handle.model_version,
+        model_family=handle.model_family,
+        state=handle.state,
+        artifact_path=handle.artifact_path,
+        current_mape=handle.current_mape,
+        feature_set_version=handle.feature_set_version,
+        promoted_at=promoted_at,
+        created_at=handle.created_at,
     )
+
+
+def test_forecast_model_stale_flag(make_request, servicer):
+    """T095 — model_stale=true when promoted_at > 14 days ago."""
+
     from ml_forecast.features.sentiment_features import SentimentFeature
+
+    old_handle = _with_handle(_handle(), promoted_at=datetime.utcnow() - timedelta(days=30))
 
     with patch(
         "ml_forecast.api.forecast_service.freshness.check_ohlcv",
@@ -385,3 +389,76 @@ def test_forecast_model_stale_flag(make_request, servicer):
 
     assert ctx.code is None
     assert resp.model_stale is True
+
+
+def test_forecast_outside_trading_hours_flag(make_request, servicer):
+    """T095 — outside_trading_hours=true when now is outside MOEX session."""
+
+    from datetime import datetime as _dt
+
+    from ml_forecast.features.sentiment_features import SentimentFeature
+
+    # Saturday at 14:00 MSK — weekend, weekday() = 5.
+    saturday_evening = _dt(2026, 1, 17, 14, 0)
+
+    with patch(
+        "ml_forecast.api.forecast_service.freshness.check_ohlcv",
+        return_value=SourceFreshness.FRESH,
+    ), patch(
+        "ml_forecast.api.forecast_service.freshness.check_sentiment",
+        return_value=SourceFreshness.FRESH,
+    ), patch(
+        "ml_forecast.api.forecast_service.registry.get_production",
+        return_value=_handle(),
+    ), patch(
+        "ml_forecast.api.forecast_service.registry.load_forecaster",
+        return_value=_forecaster_stub(),
+    ), patch(
+        "ml_forecast.api.forecast_service.redis_client.get_ohlcv_last",
+        return_value=_ohlcv_snap(),
+    ), patch(
+        "ml_forecast.api.forecast_service.sentiment_score",
+        return_value=SentimentFeature(value=Decimal("0.0"), status=FactorStatus.OK),
+    ), patch(
+        "ml_forecast.api.forecast_service._msk_now", return_value=saturday_evening
+    ):
+        ctx = FakeContext()
+        resp = servicer.Forecast(make_request(), ctx)
+
+    assert ctx.code is None
+    assert resp.outside_trading_hours is True
+
+
+def test_forecast_anomalous_last_bar_flag(make_request, servicer):
+    """T095 — anomalous_last_bar=true when last bar has 10× volume spike."""
+
+    from ml_forecast.features.sentiment_features import SentimentFeature
+
+    snap = _ohlcv_snap()
+    # Inflate the last bar's volume to trigger the anomaly detector.
+    snap.bars[-1] = {**snap.bars[-1], "v": snap.bars[-1]["v"] * 50}
+
+    with patch(
+        "ml_forecast.api.forecast_service.freshness.check_ohlcv",
+        return_value=SourceFreshness.FRESH,
+    ), patch(
+        "ml_forecast.api.forecast_service.freshness.check_sentiment",
+        return_value=SourceFreshness.FRESH,
+    ), patch(
+        "ml_forecast.api.forecast_service.registry.get_production",
+        return_value=_handle(),
+    ), patch(
+        "ml_forecast.api.forecast_service.registry.load_forecaster",
+        return_value=_forecaster_stub(),
+    ), patch(
+        "ml_forecast.api.forecast_service.redis_client.get_ohlcv_last",
+        return_value=snap,
+    ), patch(
+        "ml_forecast.api.forecast_service.sentiment_score",
+        return_value=SentimentFeature(value=Decimal("0.0"), status=FactorStatus.OK),
+    ):
+        ctx = FakeContext()
+        resp = servicer.Forecast(make_request(), ctx)
+
+    assert ctx.code is None
+    assert resp.anomalous_last_bar is True
