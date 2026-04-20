@@ -34,7 +34,41 @@ def _build_server() -> grpc.Server:
     )
     # Health is always available, even when the domain servicer is not yet wired.
     health_pb2_grpc.add_HealthServicer_to_server(HealthServicer(), server)
+    _maybe_register_ml_forecast(server)
     return server
+
+
+def _maybe_register_ml_forecast(server: grpc.Server) -> None:
+    """Register finzooka.ml.v1.MlForecast servicer if codegen stubs exist.
+
+    Generated stubs are produced during Docker build via
+    ``python -m grpc_tools.protoc``. When running tests before codegen
+    (e.g. mypy-only check), we skip registration rather than error.
+    """
+
+    try:
+        from ml_forecast.api.forecast_service import ForecastServicer
+        from ml_forecast.grpc_gen.finzooka.ml.v1 import (
+            ml_forecast_pb2_grpc,  # noqa: F401 — ensures import side-effect
+        )
+    except ImportError:
+        log.warning(
+            "gRPC stubs not found — MlForecast RPC unregistered. "
+            "Run `make proto` or rebuild the image."
+        )
+        return
+
+    class _Servicer(
+        ml_forecast_pb2_grpc.MlForecastServicer,  # type: ignore[misc]
+        ForecastServicer,
+    ):
+        """Concrete MlForecast servicer composed of the generated stub
+        + our ForecastServicer implementation. Unimplemented RPCs (Train,
+        Backtest, admin) fall through to UNIMPLEMENTED gRPC status.
+        """
+
+    ml_forecast_pb2_grpc.add_MlForecastServicer_to_server(_Servicer(), server)
+    log.info("finzooka.ml.v1.MlForecast Forecast RPC registered")
 
 
 def serve() -> None:
