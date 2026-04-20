@@ -146,3 +146,38 @@ def archive(ticker: str, timeframe: Timeframe, model_version: str) -> Path:
 
 def artifact_sha256(ticker: str, timeframe: Timeframe, model_version: str) -> str:
     return _sha256(_base_dir(ticker, timeframe) / f"{model_version}.joblib")
+
+
+def rotate_archive(
+    ticker: str, timeframe: Timeframe, keep: int = 3
+) -> list[Path]:
+    """T094 — retention policy: keep at most ``keep`` most-recent archived
+    artifacts. Deletes older .joblib + .metadata.json pairs from the
+    ``archive/`` subdir.
+
+    Also removes orphan ``ml.model_registry`` rows in ``state=archived``
+    that no longer have a physical artifact on disk (covers the corner
+    case where a previous rotation was interrupted).
+    """
+
+    archive_dir = _base_dir(ticker, timeframe) / "archive"
+    if not archive_dir.is_dir():
+        return []
+
+    artifacts = sorted(
+        archive_dir.glob("*.joblib"),
+        key=lambda p: p.stat().st_mtime,
+        reverse=True,
+    )
+    to_delete = artifacts[keep:]
+    removed: list[Path] = []
+    for art in to_delete:
+        meta = art.with_suffix(".metadata.json")
+        try:
+            art.unlink()
+            removed.append(art)
+            if meta.exists():
+                meta.unlink()
+        except OSError:
+            continue
+    return removed

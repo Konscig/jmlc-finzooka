@@ -30,8 +30,19 @@ test:
 	pytest -ra
 
 smoke:
-	@echo "smoke target implemented in T087"
-	@exit 1
+	@# End-to-end local smoke: build, migrate, start, seed redis, check health.
+	@# Runs from the repo root (uses the top-level docker-compose.yaml).
+	@set -e; \
+	cd .. && \
+	DOCKER_BUILDKIT=1 docker compose build ml && \
+	docker compose up -d postgres redis && \
+	docker compose up ml-migrate && \
+	docker compose up -d ml && \
+	sleep 3 && \
+	docker compose exec -T ml python -c "import grpc; from grpc_health.v1 import health_pb2, health_pb2_grpc; ch = grpc.insecure_channel('localhost:50051'); resp = health_pb2_grpc.HealthStub(ch).Check(health_pb2.HealthCheckRequest(service='')); assert resp.status == health_pb2.HealthCheckResponse.SERVING, 'health check did NOT report SERVING'; print('health OK')" && \
+	docker compose run --rm --no-deps -T -e HOME=/tmp ml pytest -ra -p no:cacheprovider --rootdir=/app && \
+	docker compose down && \
+	echo "smoke: OK"
 
 clean:
 	rm -rf $(GRPC_OUT)/finzooka build dist *.egg-info
