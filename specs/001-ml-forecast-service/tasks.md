@@ -222,15 +222,15 @@ Feature code lives under `ml_forecast/` at repo root (per plan
 
 ### Tests for US5
 
-- [ ] T080 [P] [US5] Contract test `ml_forecast/tests/contract/test_classify_liquidity.py` — проверяет возврат `blue_chip_recall`, `other_recall`, `total_tickers=249`; assert `classification_run` row persisted
-- [ ] T081 [P] [US5] Integration test `ml_forecast/tests/integration/test_classifier_meets_recall.py` — на полном наборе `archive/D1/*_D1.csv`, assert `blue_chip_recall ≥ 0.80`, `other_recall ≥ 0.90` (SC-010)
+- [X] T080 [P] [US5] Contract test `ml_forecast/tests/contract/test_classify_liquidity.py` — проверяет возврат `blue_chip_recall`, `other_recall`, `total_tickers=249`; assert `classification_run` row persisted
+- [X] T081 [P] [US5] Integration test `ml_forecast/tests/integration/test_classifier_meets_recall.py` — на полном наборе `archive/D1/*_D1.csv`, assert `blue_chip_recall ≥ 0.80`, `other_recall ≥ 0.90` (SC-010)
 
 ### Implementation for US5
 
-- [ ] T082 [US5] Implement `ml_forecast/src/ml_forecast/models/classifier.py::LiquidityClassifier.fit(df, labels)` — RandomForest(class_weight='balanced', n_estimators=300) + stratified split; опциональный SMOTE через `imblearn` если recall < 0.80 на первом проходе (R11)
-- [ ] T083 [US5] Implement `ml_forecast/src/ml_forecast/features/ticker_features.py::extract_from_archive()` — для каждого тикера в `archive/D1/`: средний объём, волатильность, рост/день, общий возраст истории → DataFrame; label `is_blue_chip` из seed-списка из 13 уникальных тикеров: {SBER, GAZP, LKOH, GMKN, ROSN, NVTK, TATN, MGNT, YNDX, MTSS, VTBR, ALRS, PLZL}
-- [ ] T084 [US5] Implement `ml_forecast/src/ml_forecast/api/classify_service.py::ClassifyServicer.ClassifyLiquidity` — extract features (T083), fit (T082), compute per-class recall, persist `classification_run` (T017), return proto
-- [ ] T085 [US5] Wire ClassifyServicer в `main.py`
+- [X] T082 [US5] Implement `ml_forecast/src/ml_forecast/models/classifier.py::LiquidityClassifier.fit(df, labels)` — RandomForest(class_weight='balanced', n_estimators=300) + stratified split; опциональный SMOTE через `imblearn` если recall < 0.80 на первом проходе (R11)
+- [X] T083 [US5] Implement `ml_forecast/src/ml_forecast/features/ticker_features.py::extract_from_archive()` — для каждого тикера в `archive/D1/`: средний объём, волатильность, рост/день, общий возраст истории → DataFrame; label `is_blue_chip` из seed-списка из 13 уникальных тикеров: {SBER, GAZP, LKOH, GMKN, ROSN, NVTK, TATN, MGNT, YNDX, MTSS, VTBR, ALRS, PLZL}
+- [X] T084 [US5] Implement `ml_forecast/src/ml_forecast/api/classify_service.py::ClassifyServicer.ClassifyLiquidity` — extract features (T083), fit (T082), compute per-class recall, persist `classification_run` (T017), return proto
+- [X] T085 [US5] Wire ClassifyServicer в `main.py`
 
 **Checkpoint**: SC-010 достигнут; row in `classification_run` для каждого запуска.
 
@@ -240,7 +240,7 @@ Feature code lives under `ml_forecast/` at repo root (per plan
 
 **Purpose**: приведение в запускаемое состояние; smoke-тест quickstart.
 
-- [ ] T086 [P] Implement `ml_forecast/scripts/quickstart_seed_redis.py` из quickstart §6 — читает последние N баров CSV и пишет в Redis ключи (OHLCV + stub sentiment), используется smoke-test’ом и в ручной отладке
+- [X] T086 [P] Implement `ml_forecast/scripts/quickstart_seed_redis.py` из quickstart §6 — читает последние N баров CSV и пишет в Redis ключи (OHLCV + stub sentiment), используется smoke-test’ом и в ручной отладке
 - [ ] T087 [P] Implement `ml_forecast/Makefile` target `smoke` из quickstart §8 (alembic → proto → compose up → train → promote → seed redis → forecast → assertion via grpcurl+jq)
 - [ ] T088 [P] Add `ml_forecast/README.md` — ссылки на [spec.md](../specs/001-ml-forecast-service/spec.md), [plan.md](../specs/001-ml-forecast-service/plan.md), [quickstart.md](../specs/001-ml-forecast-service/quickstart.md); how to run, how to add new ticker
 - [ ] T089 Append `ml_forecast` фрагмент в корневой `docker-compose.yaml` репозитория (единый стек с будущими backend / sentiment / data_collector)

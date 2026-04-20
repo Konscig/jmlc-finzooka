@@ -61,6 +61,7 @@ def _maybe_register_ml_forecast(server: grpc.Server) -> None:
     try:
         from ml_forecast.api.admin_service import AdminServicer
         from ml_forecast.api.backtest_service import BacktestServicer
+        from ml_forecast.api.classify_service import ClassifyServicer
         from ml_forecast.api.forecast_service import ForecastServicer
         from ml_forecast.api.train_service import TrainServicer
         from ml_forecast.grpc_gen.finzooka.ml.v1 import (
@@ -79,15 +80,17 @@ def _maybe_register_ml_forecast(server: grpc.Server) -> None:
         TrainServicer,
         BacktestServicer,
         AdminServicer,
+        ClassifyServicer,
     ):
         """Concrete MlForecast servicer composed of the generated stub and
-        all implemented servicers. Classify (US-5) remains UNIMPLEMENTED
-        until Phase 7 lands.
+        every implemented servicer. GetShadowReport still falls through to
+        UNIMPLEMENTED until the shadow mechanics task set (T058-T060) lands.
         """
 
     ml_forecast_pb2_grpc.add_MlForecastServicer_to_server(_Servicer(), server)
     log.info(
-        "finzooka.ml.v1.MlForecast: Forecast + Train + Backtest + Admin RPCs registered"
+        "finzooka.ml.v1.MlForecast: Forecast + Train + Backtest + Admin + "
+        "ClassifyLiquidity RPCs registered"
     )
 
 
