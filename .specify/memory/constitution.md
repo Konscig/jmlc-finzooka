@@ -1,7 +1,7 @@
 <!--
 ## Sync Impact Report
-- **Version change**: 0.0.0 → 1.0.0
-- **Bump rationale**: MAJOR — initial constitution creation (first ratification)
+- **Version change**: 0.0.0 → 1.0.0 (constitution content unchanged in this sync)
+- **Bump rationale**: MAJOR — initial constitution creation (first ratification 2026-03-14)
 - **Modified principles**: N/A (initial creation)
 - **Added sections**:
   - Core Principles (7 principles)
@@ -10,7 +10,8 @@
   - Governance
 - **Removed sections**: N/A
 - **Templates requiring updates**:
-  - `.specify/templates/plan-template.md` — ✅ no updates needed (Constitution Check section is generic)
+  - `.specify/templates/plan-template.md` — ✅ updated 2026-04-19: Constitution
+    Check now materializes concrete gate checklists for all 7 principles
   - `.specify/templates/spec-template.md` — ✅ no updates needed (template is generic)
   - `.specify/templates/tasks-template.md` — ✅ no updates needed (template is generic)
 - **Follow-up TODOs**: none

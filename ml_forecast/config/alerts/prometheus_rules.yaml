@@ -1,0 +1,82 @@
+# Prometheus alert rules for ml-forecast (T078).
+#
+# Deployed via prometheus.yml rule_files:. All alerts annotate a
+# recommended admin action so the on-call runbook stays actionable.
+#
+# Thresholds are pinned to SC-004 (latency) and the remediation
+# "advisory flags" pass (stale-rate); adjust only via spec change.
+
+groups:
+  - name: ml_forecast_slo
+    interval: 30s
+    rules:
+      - alert: MlForecastLatencyHigh
+        expr: |
+          histogram_quantile(0.95,
+            sum(rate(ml_forecast_latency_seconds_bucket[5m])) by (le)
+          ) > 30
+        for: 5m
+        labels:
+          severity: warning
+          service: ml-forecast
+        annotations:
+          summary: "ml-forecast p95 latency > 30s"
+          description: "p95 Forecast RPC latency exceeded SC-004 threshold over the last 5 minutes."
+          runbook: "Check ml container CPU + model size; consider restarting if leak suspected."
+
+      - alert: MlForecastLatencyCritical
+        expr: |
+          rate(ml_forecast_latency_seconds_sum[5m])
+          / rate(ml_forecast_latency_seconds_count[5m]) > 30
+        for: 5m
+        labels:
+          severity: critical
+          service: ml-forecast
+        annotations:
+          summary: "ml-forecast avg latency > 30s"
+          description: "Average Forecast latency over 5 minutes is above Principle V's alert threshold."
+          runbook: "Same as MlForecastLatencyHigh but escalate immediately."
+
+      - alert: MlForecastStaleRateHigh
+        expr: ml_forecast_stale_rate{source="ohlcv"} > 0.2
+        for: 15m
+        labels:
+          severity: warning
+          service: ml-forecast
+        annotations:
+          summary: "ml-forecast OHLCV stale rate > 20% for 15m"
+          description: "Data Collector is likely lagging; Forecast RPC rejects are piling up."
+          runbook: "Investigate data_collector container logs; verify T-Invest API quota."
+
+      - alert: MlForecastSentimentUnavailable
+        expr: ml_forecast_stale_rate{source="sentiment"} > 0.5
+        for: 30m
+        labels:
+          severity: warning
+          service: ml-forecast
+        annotations:
+          summary: "ml-forecast sentiment fallback rate > 50% for 30m"
+          description: "Sentiment Pipeline is producing stale/unavailable aggregates; multi-factor quality is degraded."
+          runbook: "Check sentiment container; Mistral API quota likely exhausted or T-Pulse scraper blocked."
+
+      - alert: MlForecastHealthDown
+        expr: min(ml_forecast_health_probe) == 0
+        for: 2m
+        labels:
+          severity: critical
+          service: ml-forecast
+        annotations:
+          summary: "ml-forecast backend probe failing"
+          description: "Postgres or Redis is unreachable from the ml container."
+          runbook: "Check the failing component's container; restart if necessary."
+
+      - alert: MlForecastMapeRegression
+        expr: ml_forecast_current_mape > 0.08
+        for: 1d
+        labels:
+          severity: warning
+          service: ml-forecast
+        annotations:
+          summary: "ml-forecast MAPE > 8% for a full day"
+          description: "Production model MAPE has drifted well above SC-001 targets — retrain recommended."
+          runbook: "Inspect recent Forecast logs; trigger Train RPC manually if the retrain schedule has not caught up."

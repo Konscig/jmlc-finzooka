@@ -1,0 +1,82 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "ml_forecast"
+version = "0.1.0"
+description = "Finzooka ML Forecast Service (gRPC microservice wrapping ARMAExo+LightGBM)"
+readme = "README.md"
+requires-python = ">=3.11"
+license = { text = "Proprietary" }
+authors = [{ name = "Finzooka" }]
+
+dependencies = [
+    "grpcio>=1.60",
+    "grpcio-tools>=1.60",
+    "grpcio-health-checking>=1.60",
+    "protobuf>=4.25",
+    "scikit-learn>=1.4",
+    "statsmodels>=0.14",
+    "lightgbm>=4.2",
+    "optuna>=3.5",
+    "shap>=0.44",
+    "imbalanced-learn>=0.12",
+    "pandas>=2.1",
+    "numpy>=1.26",
+    "ta>=0.11",
+    "redis>=5.0",
+    "sqlalchemy>=2.0",
+    "psycopg2-binary>=2.9",
+    "alembic>=1.13",
+    "celery[redis]>=5.3",
+    "pydantic>=2.5",
+    "pydantic-settings>=2.1",
+    "prometheus-client>=0.19",
+    "pyyaml>=6.0",
+    "python-dateutil>=2.8",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.0",
+    "pytest-asyncio>=0.23",
+    "pytest-cov>=4.1",
+    "grpcio-testing>=1.60",
+    "hypothesis>=6.98",
+    "ruff>=0.3",
+    "mypy>=1.8",
+    "types-pyyaml",
+    "types-protobuf",
+]
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-dir]
+"" = "src"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+asyncio_mode = "auto"
+addopts = "-ra -q"
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+extend-exclude = ["src/ml_forecast/grpc_gen", "migrations/versions"]
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "B", "UP", "N", "SIM", "RUF"]
+ignore = ["E501"]
+
+[tool.mypy]
+python_version = "3.11"
+strict = true
+warn_return_any = true
+warn_unused_configs = true
+exclude = ["src/ml_forecast/grpc_gen", "migrations/versions", "build"]
+
+[[tool.mypy.overrides]]
+module = ["lightgbm.*", "statsmodels.*", "shap.*", "imblearn.*", "ta.*"]
+ignore_missing_imports = true

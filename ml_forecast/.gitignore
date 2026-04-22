@@ -1,0 +1,27 @@
+# Generated gRPC stubs — regenerated via `make proto` from proto/*.proto.
+src/ml_forecast/grpc_gen/finzooka/
+
+# Python build / env
+__pycache__/
+*.pyc
+*.pyo
+*.egg-info/
+build/
+dist/
+.venv/
+venv/
+
+# Local env
+.env.local
+.env
+
+# Pytest / mypy
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+
+# IDE
+.vscode/
+.idea/

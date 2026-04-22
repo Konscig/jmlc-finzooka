@@ -1,0 +1,305 @@
+// Finzooka ML Forecast Service — gRPC contract.
+//
+// Package:   finzooka.ml.v1
+// Owner:     001-ml-forecast-service (feature branch)
+// Consumers: Backend API (synchronous Forecast), Admin Panel (Promote/
+//            ShadowReport), Task Scheduler (Train via manual trigger).
+//
+// Versioning policy: additive changes keep the same package; any
+// breaking change ships under finzooka.ml.v2 with both versions
+// served in parallel for at least one release cycle (see research.md R1).
+
+syntax = "proto3";
+
+package finzooka.ml.v1;
+
+import "google/protobuf/timestamp.proto";
+
+// -----------------------------------------------------------------------------
+// Enums
+// -----------------------------------------------------------------------------
+
+enum Timeframe {
+  TIMEFRAME_UNSPECIFIED = 0;
+  TIMEFRAME_MN1 = 1;
+  TIMEFRAME_W1  = 2;
+  TIMEFRAME_D1  = 3;
+  TIMEFRAME_H4  = 4;
+  TIMEFRAME_H1  = 5;
+  TIMEFRAME_M30 = 6;
+  TIMEFRAME_M15 = 7;
+  TIMEFRAME_M10 = 8;
+  TIMEFRAME_M5  = 9;
+}
+
+enum ForecastStatus {
+  FORECAST_STATUS_UNSPECIFIED = 0;
+  FORECAST_STATUS_OK = 1;                     // all inputs fresh
+  FORECAST_STATUS_DEGRADED = 2;               // sentiment stale/unavailable, OHLCV fresh
+}
+
+enum SourceFreshness {
+  SOURCE_FRESHNESS_UNSPECIFIED = 0;
+  SOURCE_FRESHNESS_FRESH = 1;
+  SOURCE_FRESHNESS_STALE = 2;
+  SOURCE_FRESHNESS_UNAVAILABLE = 3;
+}
+
+enum FactorStatus {
+  FACTOR_STATUS_UNSPECIFIED = 0;
+  FACTOR_STATUS_OK = 1;
+  FACTOR_STATUS_STALE = 2;
+  FACTOR_STATUS_UNAVAILABLE = 3;
+}
+
+enum ModelState {
+  MODEL_STATE_UNSPECIFIED = 0;
+  MODEL_STATE_TRAINING = 1;
+  MODEL_STATE_SHADOW = 2;
+  MODEL_STATE_PRODUCTION = 3;
+  MODEL_STATE_ARCHIVED = 4;
+  MODEL_STATE_DO_NOT_PROMOTE = 5;
+}
+
+enum ModelFamily {
+  MODEL_FAMILY_UNSPECIFIED = 0;
+  MODEL_FAMILY_ARMAEXO = 1;
+  MODEL_FAMILY_LIGHTGBM = 2;
+  MODEL_FAMILY_BASELINE_NAIVE = 3;
+  MODEL_FAMILY_BASELINE_OHLCV_ONLY = 4;
+}
+
+enum TrainTrigger {
+  TRAIN_TRIGGER_UNSPECIFIED = 0;
+  TRAIN_TRIGGER_SCHEDULED = 1;
+  TRAIN_TRIGGER_MANUAL = 2;
+  TRAIN_TRIGGER_FAMILY_SWITCH = 3;
+}
+
+// -----------------------------------------------------------------------------
+// Common messages
+// -----------------------------------------------------------------------------
+
+message PricePoint {
+  google.protobuf.Timestamp t = 1;   // bar open time
+  double mean = 2;
+  double lo = 3;                     // confidence lower bound
+  double hi = 4;                     // confidence upper bound
+}
+
+message FactorContribution {
+  string name = 1;                   // e.g. "rsi_14", "sentiment_score"
+  double value = 2;                  // raw feature value (0 when unavailable)
+  bool has_value = 3;                // explicit null-marker: false => unavailable
+  double contribution = 4;           // normalized contribution; sum(|.|) ~ 1
+  string source = 5;                 // "ohlcv" | "sentiment" | "technical"
+  FactorStatus status = 6;
+}
+
+message SourceAvailability {
+  SourceFreshness ohlcv = 1;
+  SourceFreshness sentiment = 2;
+}
+
+message MetricsBundle {
+  double mape = 1;
+  double rmse = 2;
+  double mae = 3;
+  double r_squared = 4;
+  double directional_accuracy = 5;   // 0..1
+  double win_rate = 6;               // 0..1
+  int32 sample_size = 7;
+}
+
+message ModelHandle {
+  string ticker = 1;
+  Timeframe timeframe = 2;
+  string model_version = 3;
+  ModelFamily family = 4;
+  ModelState state = 5;
+}
+
+// -----------------------------------------------------------------------------
+// Forecast RPC
+// -----------------------------------------------------------------------------
+
+message ForecastRequest {
+  string ticker = 1;
+  Timeframe timeframe = 2;
+  int32 horizon = 3;                 // bars ahead; server rejects if > trained max
+}
+
+message ForecastResponse {
+  string request_id = 1;             // UUIDv4, matches inference_log.request_id
+  ForecastStatus status = 2;
+
+  // Populated for OK / DEGRADED statuses; empty for rejects (status signalled
+  // via gRPC code + error_details).
+  repeated PricePoint predicted_path = 3;
+  double suggested_stop_loss = 4;
+  double suggested_take_profit = 5;
+  repeated FactorContribution factors = 6;
+  string explanation = 7;
+  double mape_at_generation = 8;
+  string model_version = 9;
+  google.protobuf.Timestamp generated_at = 10;
+  SourceAvailability source_availability = 11;
+
+  // Advisory flags (spec Edge Cases). Do not change predicted_path, but signal
+  // caller that extra care is warranted.
+  bool model_stale = 12;             // production model older than stale_age (default 14 trading days)
+  bool outside_trading_hours = 13;   // request outside MOEX 10:00-18:50 MSK session
+  bool anomalous_last_bar = 14;      // last OHLCV bar flagged as corporate-action/split anomaly
+}
+
+// -----------------------------------------------------------------------------
+// Training RPC (async enqueue)
+// -----------------------------------------------------------------------------
+
+message TrainRequest {
+  string ticker = 1;
+  Timeframe timeframe = 2;
+  TrainTrigger trigger = 3;          // MANUAL from admin, SCHEDULED from beat
+  bool force = 4;                    // bypass "already running" guard
+}
+
+message TrainResponse {
+  int64 training_run_id = 1;         // matches ml.training_run.id
+  google.protobuf.Timestamp enqueued_at = 2;
+  string queue = 3;                  // e.g. "train_queue"
+}
+
+message GetTrainingRunRequest {
+  int64 training_run_id = 1;
+}
+
+message GetTrainingRunResponse {
+  int64 training_run_id = 1;
+  string status = 2;                 // running / succeeded / failed / cancelled
+  TrainTrigger trigger = 3;
+  google.protobuf.Timestamp started_at = 4;
+  google.protobuf.Timestamp finished_at = 5;
+  MetricsBundle aggregate_metrics = 6;
+  repeated MetricsBundle fold_metrics = 7;
+  MetricsBundle previous_production_metrics = 8;
+  string promote_decision = 9;       // auto_shadow / do_not_promote / awaiting_admin
+  string error = 10;                 // set when status == failed
+}
+
+// -----------------------------------------------------------------------------
+// Backtest RPC
+// -----------------------------------------------------------------------------
+
+message BacktestRequest {
+  string ticker = 1;
+  Timeframe timeframe = 2;
+  google.protobuf.Timestamp period_start = 3;
+  google.protobuf.Timestamp period_end = 4;
+  string model_version = 5;          // optional; empty => current production
+}
+
+message BacktestResponse {
+  int64 backtest_report_id = 1;
+  MetricsBundle model_metrics = 2;
+  MetricsBundle naive_baseline_metrics = 3;
+  MetricsBundle ohlcv_only_baseline_metrics = 4;
+  int32 signal_count = 5;
+}
+
+// -----------------------------------------------------------------------------
+// Admin RPCs (model lifecycle)
+// -----------------------------------------------------------------------------
+
+message PromoteRequest {
+  string ticker = 1;
+  Timeframe timeframe = 2;
+  string model_version = 3;          // must be in SHADOW state
+  string admin_note = 4;
+}
+
+message PromoteResponse {
+  ModelHandle new_production = 1;
+  ModelHandle previous_production = 2;  // moved to ARCHIVED
+}
+
+message ArchiveRequest {
+  string ticker = 1;
+  Timeframe timeframe = 2;
+  string model_version = 3;
+  string admin_note = 4;
+}
+
+message ArchiveResponse {
+  ModelHandle archived = 1;
+}
+
+message ShadowReportRequest {
+  string ticker = 1;
+  Timeframe timeframe = 2;
+  string shadow_model_version = 3;
+}
+
+message ShadowReportResponse {
+  ModelHandle shadow = 1;
+  ModelHandle production = 2;
+  MetricsBundle shadow_metrics = 3;
+  MetricsBundle production_metrics = 4;
+  int32 trading_sessions_elapsed = 5;   // needs >=5 before promote per spec
+}
+
+message ListModelsRequest {
+  string ticker = 1;                 // empty => all
+  Timeframe timeframe = 2;           // UNSPECIFIED => all
+  ModelState state = 3;              // UNSPECIFIED => all
+}
+
+message ListModelsResponse {
+  repeated ModelHandle models = 1;
+}
+
+// -----------------------------------------------------------------------------
+// Classification (US-5, P3)
+// -----------------------------------------------------------------------------
+
+message ClassifyLiquidityRequest {
+  string feature_set_version = 1;    // e.g. "v1"
+}
+
+message ClassifyLiquidityResponse {
+  int64 classification_run_id = 1;
+  double blue_chip_recall = 2;       // SC-010 gate: >=0.80
+  double other_recall = 3;
+  int32 total_tickers = 4;
+}
+
+// -----------------------------------------------------------------------------
+// Service
+// -----------------------------------------------------------------------------
+
+service MlForecast {
+  // Synchronous forecast for backend's signal orchestrator.
+  // gRPC status codes:
+  //   NOT_FOUND          — no trained model for (ticker, timeframe)
+  //   FAILED_PRECONDITION — stale OHLCV / insufficient history / horizon out of range / unexplainable
+  //   UNAVAILABLE        — Redis / DB down
+  //   DEADLINE_EXCEEDED  — inference > 60s timeout
+  rpc Forecast (ForecastRequest) returns (ForecastResponse);
+
+  // Enqueue a training job; returns training_run_id for polling.
+  rpc Train (TrainRequest) returns (TrainResponse);
+
+  // Poll training run status (used by admin panel and schedule monitor).
+  rpc GetTrainingRun (GetTrainingRunRequest) returns (GetTrainingRunResponse);
+
+  // Run a backtest; result is persisted and returned.
+  rpc Backtest (BacktestRequest) returns (BacktestResponse);
+
+  // Admin lifecycle operations.
+  rpc Promote (PromoteRequest) returns (PromoteResponse);
+  rpc Archive (ArchiveRequest) returns (ArchiveResponse);
+  rpc GetShadowReport (ShadowReportRequest) returns (ShadowReportResponse);
+  rpc ListModels (ListModelsRequest) returns (ListModelsResponse);
+
+  // Classification (US-5, P3).
+  rpc ClassifyLiquidity (ClassifyLiquidityRequest) returns (ClassifyLiquidityResponse);
+}
