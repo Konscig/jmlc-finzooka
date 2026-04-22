@@ -192,6 +192,30 @@ Conflict priority: VI > I > II > V > III > IV > VII.
 
 **Deviations**: нет. Все gate пройдены без отклонений → проходим в Phase 0.
 
+**Post-impl re-verify (2026-04-21)**:
+- I Explainability — `factor_contributions` реализовано в
+  `models/armaexo.py` (через SARIMAX coefficients) и
+  `models/lightgbm_model.py` (через SHAP TreeExplainer);
+  `inference/explain.py::render` отклоняет запрос если значимых
+  факторов (`|contribution| > EXPLAIN_MIN_CONTRIBUTION=0.01` и
+  `status != UNAVAILABLE`) меньше трёх. ✓
+- III Multi-Factor — `features/sentiment_features.py` содержит
+  multi-source guard (`len(sources) < 2 → UNAVAILABLE`), закрывая
+  remediation C3. Fallback-режим реализован через поле status
+  `SourceAvailability.sentiment` и прокидывается в
+  `ForecastResponse.source_availability.sentiment`. ✓
+- V Model Integrity — метрики публикуются через
+  `observability/metrics.py` (`ml_forecast_latency_seconds`,
+  `ml_forecast_current_mape`, `ml_forecast_stale_rate`); ежедневный
+  пересчёт current_mape живёт в `observability/jobs.py`; 6 alert-
+  правил в `config/alerts/prometheus_rules.yaml`. ✓
+- VI Regulatory — fail-closed forbidden-phrase фильтр
+  (`inference/explain.py::check_forbidden`) прогоняется на каждом
+  `render()`; тест прибивает каждую фразу из
+  `config/forbidden_phrases.yaml`. ✓
+- VII Simplicity — ни одна новая БД/очередь не добавлена; Celery
+  на Redis-брокере, всё в docker-compose.yaml. ✓
+
 ## Project Structure
 
 ### Documentation (this feature)

@@ -50,7 +50,7 @@ from ml_forecast.domain.timeframe import Timeframe
 from ml_forecast.features.ohlcv_features import atr_14 as atr_14_fn
 from ml_forecast.features.sentiment_features import sentiment_score
 from ml_forecast.features.validators import detect_anomalous_bar
-from ml_forecast.inference import freshness, registry
+from ml_forecast.inference import freshness, registry, shadow
 from ml_forecast.inference.explain import (
     ExplanationForbiddenPhrase,
     RenderContext,
@@ -349,7 +349,15 @@ class ForecastServicer:  # inherits MlForecastServicer via monkey-patch in main
             explanation=explanation,
         )
 
-        # 10) build ForecastResponse ----------------------------------------
+        # 10) enqueue shadow predictions (fire-and-forget, T060) ------------
+        shadow.enqueue_for_request(
+            request_id=str(request_id),
+            ticker=ticker,
+            timeframe=timeframe,
+            horizon=horizon,
+        )
+
+        # 11) build ForecastResponse ----------------------------------------
         return _build_response(
             pb2=pb2,
             request_id=request_id,

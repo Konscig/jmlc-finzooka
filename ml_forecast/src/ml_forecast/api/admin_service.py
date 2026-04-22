@@ -152,12 +152,96 @@ class AdminServicer:
         return resp
 
     def GetShadowReport(self, request: Any, context: grpc.ServicerContext) -> Any:
-        """MVP placeholder — full report lands with shadow mechanics (T058–T060)."""
+        """Compare shadow vs production metrics + elapsed trading sessions (T063)."""
+
+        from datetime import datetime as _dt
+
+        from sqlalchemy import select
 
         from ml_forecast.grpc_gen.finzooka.ml.v1 import ml_forecast_pb2 as pb2
+        from ml_forecast.storage.orm import ShadowPrediction
+        from ml_forecast.storage.postgres import session_scope
 
-        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
-        context.set_details(
-            "GetShadowReport lands with the shadow mechanics feature (T058-T060)"
+        ticker = str(request.ticker).upper().strip()
+        try:
+            timeframe = tf_from_proto(int(request.timeframe))
+        except KeyError:
+            context.set_code(grpc.StatusCode.INVALID_ARGUMENT)
+            context.set_details("timeframe_unspecified")
+            return pb2.ShadowReportResponse()
+        shadow_version = str(request.shadow_model_version).strip()
+
+        try:
+            all_handles = registry.list_models(ticker=ticker, timeframe=timeframe)
+        except registry.ModelNotFound as exc:
+            context.set_code(grpc.StatusCode.NOT_FOUND)
+            context.set_details(str(exc))
+            return pb2.ShadowReportResponse()
+
+        shadow_handle = next(
+            (h for h in all_handles if h.model_version == shadow_version), None
         )
-        return pb2.ShadowReportResponse()
+        prod_handle = next(
+            (h for h in all_handles if h.state == ModelState.PRODUCTION), None
+        )
+        if shadow_handle is None:
+            context.set_code(grpc.StatusCode.NOT_FOUND)
+            context.set_details(f"no shadow {ticker}/{timeframe.value}#{shadow_version}")
+            return pb2.ShadowReportResponse()
+
+        # Aggregate abs_error_pct across resolved shadow_prediction rows.
+        with session_scope() as s:
+            rows = list(
+                s.execute(
+                    select(ShadowPrediction.abs_error_pct)
+                    .where(ShadowPrediction.shadow_model_id == shadow_handle.id)
+                    .where(ShadowPrediction.abs_error_pct.isnot(None))
+                )
+            )
+            earliest = s.execute(
+                select(ShadowPrediction.generated_at)
+                .where(ShadowPrediction.shadow_model_id == shadow_handle.id)
+                .order_by(ShadowPrediction.generated_at.asc())
+                .limit(1)
+            ).scalar_one_or_none()
+
+        shadow_mape = (
+            float(sum(float(r.abs_error_pct) for r in rows) / len(rows))
+            if rows
+            else 0.0
+        )
+        trading_sessions = _count_trading_sessions_since(earliest)
+
+        shadow_bundle = pb2.MetricsBundle(
+            mape=shadow_mape, sample_size=len(rows)
+        )
+        prod_bundle = pb2.MetricsBundle(
+            mape=float(prod_handle.current_mape or 0.0)
+            if prod_handle is not None
+            else 0.0,
+            sample_size=0,
+        )
+        resp = pb2.ShadowReportResponse(
+            shadow=_to_handle_proto(pb2, shadow_handle),
+            shadow_metrics=shadow_bundle,
+            production_metrics=prod_bundle,
+            trading_sessions_elapsed=int(trading_sessions),
+        )
+        if prod_handle is not None:
+            resp.production.CopyFrom(_to_handle_proto(pb2, prod_handle))
+        return resp
+
+
+def _count_trading_sessions_since(since: Any) -> int:
+    if since is None:
+        return 0
+    from datetime import datetime as _dt
+
+    end = _dt.utcnow()
+    sessions = 0
+    day = since.date() if hasattr(since, "date") else since
+    while day <= end.date():
+        if day.weekday() < 5:
+            sessions += 1
+        day += __import__("datetime").timedelta(days=1)
+    return sessions

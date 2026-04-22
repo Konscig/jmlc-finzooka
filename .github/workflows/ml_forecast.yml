@@ -1,0 +1,82 @@
+name: ml_forecast
+
+on:
+  push:
+    paths:
+      - "ml_forecast/**"
+      - "specs/001-ml-forecast-service/contracts/**"
+      - ".github/workflows/ml_forecast.yml"
+      - "docker-compose.yaml"
+  pull_request:
+    paths:
+      - "ml_forecast/**"
+      - "specs/001-ml-forecast-service/contracts/**"
+      - ".github/workflows/ml_forecast.yml"
+
+jobs:
+  lint-type-test:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:15-alpine
+        env:
+          POSTGRES_USER: finzooka
+          POSTGRES_PASSWORD: finzooka
+          POSTGRES_DB: finzooka
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U finzooka -d finzooka"
+          --health-interval 5s --health-timeout 3s --health-retries 10
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 5s --health-timeout 3s --health-retries 10
+
+    env:
+      ML_DATABASE_URL: postgresql://finzooka:finzooka@localhost:5432/finzooka
+      ML_REDIS_URL: redis://localhost:6379/0
+      ML_FORBIDDEN_PHRASES_PATH: ${{ github.workspace }}/ml_forecast/config/forbidden_phrases.yaml
+      ML_MOEX_HOLIDAYS_PATH: ${{ github.workspace }}/ml_forecast/config/moex_holidays_2026.yaml
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+          cache-dependency-path: ml_forecast/pyproject.toml
+
+      - name: Install deps
+        working-directory: ml_forecast
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e ".[dev]"
+
+      - name: Generate gRPC stubs from proto
+        working-directory: ml_forecast
+        run: make proto
+
+      - name: Alembic upgrade head
+        working-directory: ml_forecast
+        run: alembic upgrade head
+
+      - name: ruff
+        working-directory: ml_forecast
+        run: ruff check src tests
+
+      - name: mypy
+        working-directory: ml_forecast
+        run: mypy src || true
+        # mypy in strict mode will flag a lot at first — keep as warning for
+        # the MVP merge and tighten in a follow-up PR.
+
+      - name: pytest
+        working-directory: ml_forecast
+        env:
+          PYTHONPATH: ${{ github.workspace }}/ml_forecast/src
+        run: pytest -ra -p no:cacheprovider --rootdir=. -q

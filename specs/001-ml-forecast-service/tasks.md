@@ -143,21 +143,21 @@ Feature code lives under `ml_forecast/` at repo root (per plan
 ### Tests for US2
 
 - [X] T048 [P] [US2] Contract test `ml_forecast/tests/contract/test_train_enqueue.py` — `Train(SBER,D1)` возвращает `training_run_id>0`, строка в `training_run` status='running', Celery задача в очереди `train_queue`
-- [ ] T049 [P] [US2] Contract test `ml_forecast/tests/contract/test_get_training_run.py` — опрос running/succeeded; succeeded даёт `metrics_aggregate`, `fold_metrics[≥5]`, `promote_decision`
+- [X] T049 [P] [US2] Contract test `ml_forecast/tests/contract/test_get_training_run.py` — опрос running/succeeded; succeeded даёт `metrics_aggregate`, `fold_metrics[≥5]`, `promote_decision`
 - [X] T050 [P] [US2] Contract test `ml_forecast/tests/contract/test_train_regression_do_not_promote.py` — если metrics новой версии хуже текущей production на порог → `promote_decision='do_not_promote'`, модель НЕ попадает в shadow, НЕ влияет на production (US-2 AC4, FR-009)
 - [X] T051 [P] [US2] Contract test `ml_forecast/tests/contract/test_promote_archive.py` — `Promote(ticker,tf,version)` только для state=shadow; переводит текущую production → archived в одной транзакции; повторный `Promote` того же version → FAILED_PRECONDITION
-- [ ] T052 [P] [US2] Contract test `ml_forecast/tests/contract/test_shadow_report.py` — `GetShadowReport` возвращает production_metrics, shadow_metrics, `trading_sessions_elapsed` корректно отсчитанное (pre-condition: shadow_prediction заполнен mock-данными)
-- [ ] T053 [P] [US2] Integration test `ml_forecast/tests/integration/test_train_shadow_promote_cycle.py` — полный цикл: Train → ждать succeeded → state=shadow → фейк-Forecast вызовы 5 раз (shadow_prediction пополняется) → resolve фактами → Promote → следующий Forecast использует новую production
+- [X] T052 [P] [US2] Contract test `ml_forecast/tests/contract/test_shadow_report.py` — `GetShadowReport` возвращает production_metrics, shadow_metrics, `trading_sessions_elapsed` корректно отсчитанное (pre-condition: shadow_prediction заполнен mock-данными)
+- [X] T053 [P] [US2] Integration test `ml_forecast/tests/integration/test_train_shadow_promote_cycle.py` — полный цикл: Train → ждать succeeded → state=shadow → фейк-Forecast вызовы 5 раз (shadow_prediction пополняется) → resolve фактами → Promote → следующий Forecast использует новую production
 
 ### Implementation for US2
 
 - [X] T054 [US2] Implement `ml_forecast/src/ml_forecast/training/pipeline.py::TrainPipeline.run(ticker, timeframe, trigger)` — загрузить CSV из `archive/`, `validate_ohlcv_csv`, feature-extract, walk-forward (T042), hyperparam search (T043), persist artifact + metadata.json (T019), register row in `model_registry`. **Promotion gating (FR-022, Principle V)**: одновременно обучать NaiveBaseline на том же walk-forward; если `new_r2 < naive_r2` или `new_r2 < 0` → `state='do_not_promote'`, запись в `training_run.comparison_to_prev.vs_naive` фиксируется явно; иначе сравнение с предыдущей production → `shadow` или `do_not_promote` по регрессии. **Family-switch (FR-025)**: если `model_family == ARMAEXO` и aggregate MAPE по walk-forward не укладывается в SC-001 (≤5% M15 / ≤3% D1 для blue-chip тикеров из SC-001 списка), запустить второй прогон с `LIGHTGBM`; лучший по MAPE продвигается в shadow; в `training_run` пишется `trigger=FAMILY_SWITCH` с обоснованием (`{"from":"armaexo","to":"lightgbm","delta_mape":..}`)
-- [ ] T055 [US2] Implement `ml_forecast/src/ml_forecast/training/scheduler.py` — Celery app + task `train_pair(ticker, timeframe, trigger)` (вызывает T054), Celery Beat schedule `0 2 * * 0` → `retrain_all_production_models` (R9)
+- [X] T055 [US2] Implement `ml_forecast/src/ml_forecast/training/scheduler.py` — Celery app + task `train_pair(ticker, timeframe, trigger)` (вызывает T054), Celery Beat schedule `0 2 * * 0` → `retrain_all_production_models` (R9)
 - [X] T056 [US2] Implement `ml_forecast/src/ml_forecast/api/train_service.py::TrainServicer.Train` — pre-checks: (a) **blue-chip guard** (FR-012): если `tickers.is_blue_chip=false` и тикер не в whitelist v1.1 → `FAILED_PRECONDITION`/`non_blue_chip_mvp`; (b) **concurrent-train guard** (spec Edge Case): взять `pg_advisory_xact_lock(hashtext(ticker||timeframe))` в той же транзакции enqueue — второй параллельный Train при том же ключе получит `FAILED_PRECONDITION`/`already_running`, если не передан `force=true`. Далее — enqueue через Celery, возвращает `training_run_id`. Contract-тесты T048/T049 дополнить кейсом concurrent-train (второй вызов без `force` падает, с `force=true` проходит)
 - [X] T057 [US2] Implement `ml_forecast/src/ml_forecast/api/train_service.py::TrainServicer.GetTrainingRun` — читает из `training_run` ORM, маппит в proto
-- [ ] T058 [US2] Implement `ml_forecast/src/ml_forecast/inference/shadow.py::enqueue_shadow_predictions(request_id, ticker, timeframe, horizon, features_snapshot)` — после `Forecast` (T045) публикует Celery-таск `shadow_predict` на каждую активную shadow-модель (R7); worker пишет в `shadow_prediction`
-- [ ] T059 [US2] Implement Celery task `shadow_resolve` (каждые 15 мин) — находит `shadow_prediction` со `resolved_at IS NULL` и `t+horizon ≤ now`, читает фактические цены из Redis/archive, заполняет `actual_path` + `abs_error_pct`
-- [ ] T060 [US2] Wire `enqueue_shadow_predictions` в `forecast_service.py` (T045) **после** возврата основного ответа клиенту (fire-and-forget Celery publish; не блокирует critical path per R7)
+- [X] T058 [US2] Implement `ml_forecast/src/ml_forecast/inference/shadow.py::enqueue_shadow_predictions(request_id, ticker, timeframe, horizon, features_snapshot)` — после `Forecast` (T045) публикует Celery-таск `shadow_predict` на каждую активную shadow-модель (R7); worker пишет в `shadow_prediction`
+- [X] T059 [US2] Implement Celery task `shadow_resolve` (каждые 15 мин) — находит `shadow_prediction` со `resolved_at IS NULL` и `t+horizon ≤ now`, читает фактические цены из Redis/archive, заполняет `actual_path` + `abs_error_pct`
+- [X] T060 [US2] Wire `enqueue_shadow_predictions` в `forecast_service.py` (T045) **после** возврата основного ответа клиенту (fire-and-forget Celery publish; не блокирует critical path per R7)
 - [X] T061 [P] [US2] Implement `ml_forecast/src/ml_forecast/api/admin_service.py::AdminServicer.Promote` — transactional: load shadow model, swap symlink (T019), archive previous production, INSERT `promoted_at` — использует `SELECT ... FOR UPDATE` + partial UK из T016 как safety net
 - [X] T062 [P] [US2] Implement `AdminServicer.Archive` — state→archived, nullify symlink if was production; в этом случае требуется promote чего-то нового перед следующим Forecast (иначе NOT_FOUND)
 - [X] T063 [P] [US2] Implement `AdminServicer.GetShadowReport` — агрегация shadow_prediction vs inference_log за период shadow-модели; `trading_sessions_elapsed` считается по календарю MOEX (пн–пт без праздников; статический список праздников МОЕХ в `config/moex_holidays_2026.yaml`)
@@ -197,18 +197,18 @@ Feature code lives under `ml_forecast/` at repo root (per plan
 
 ### Tests for US4
 
-- [ ] T071 [P] [US4] Integration test `ml_forecast/tests/integration/test_inference_log_written.py` — N forecast calls → N rows in `inference_log` с корректными status/latency/model_id/mape_at_generation/source_availability
-- [ ] T072 [P] [US4] Integration test `ml_forecast/tests/integration/test_prometheus_exporter.py` — после forecast’ов `/metrics` содержит ожидаемые метрики; счётчики монотонно растут
-- [ ] T073 [P] [US4] Integration test `ml_forecast/tests/integration/test_healthcheck_pipeline_status.py` — запуск health-task → строка `pipeline_statuses.pipeline_name='ml_forecast'` обновлена; stop Redis → status=unhealthy
+- [X] T071 [P] [US4] Integration test `ml_forecast/tests/integration/test_inference_log_written.py` — N forecast calls → N rows in `inference_log` с корректными status/latency/model_id/mape_at_generation/source_availability
+- [X] T072 [P] [US4] Integration test `ml_forecast/tests/integration/test_prometheus_exporter.py` — после forecast’ов `/metrics` содержит ожидаемые метрики; счётчики монотонно растут
+- [X] T073 [P] [US4] Integration test `ml_forecast/tests/integration/test_healthcheck_pipeline_status.py` — запуск health-task → строка `pipeline_statuses.pipeline_name='ml_forecast'` обновлена; stop Redis → status=unhealthy
 
 ### Implementation for US4
 
 - [X] T074 [P] [US4] Implement `ml_forecast/src/ml_forecast/observability/metrics.py` — `prometheus_client` экспортер на `:9100`: `ml_forecast_latency_seconds` (histogram), `ml_forecast_forecast_total{status}` (counter), `ml_forecast_train_duration_seconds` (histogram), `ml_forecast_stale_rate{source}` (gauge), `ml_forecast_current_mape{ticker,timeframe}` (gauge)
 - [X] T075 [US4] Hook metrics в `forecast_service.py` (T045): measure latency, increment status counter, update stale gauges
-- [ ] T076 [P] [US4] Celery task `recompute_daily_metrics` (кожен ранок MSK): по каждой production-модели — последние 30 resolved `inference_log` → MAPE, win rate; UPDATE `model_registry.current_mape` + INSERT row in shared `model_metrics` table (R8, FR-016)
-- [ ] T077 [P] [US4] Celery periodic task `health_check` (каждую минуту, FR-017): проверяет (а) Redis reachable, (б) Postgres reachable, (в) нет production-модели старше 14 дней без trained; UPDATE `pipeline_statuses.ml_forecast` и отсылает алерт через `log.error` (перехват логгером → Telegram-бот admin — вне scope этой фичи)
+- [X] T076 [P] [US4] Celery task `recompute_daily_metrics` (кожен ранок MSK): по каждой production-модели — последние 30 resolved `inference_log` → MAPE, win rate; UPDATE `model_registry.current_mape` + INSERT row in shared `model_metrics` table (R8, FR-016)
+- [X] T077 [P] [US4] Celery periodic task `health_check` (каждую минуту, FR-017): проверяет (а) Redis reachable, (б) Postgres reachable, (в) нет production-модели старше 14 дней без trained; UPDATE `pipeline_statuses.ml_forecast` и отсылает алерт через `log.error` (перехват логгером → Telegram-бот admin — вне scope этой фичи)
 - [X] T078 [P] [US4] Create `ml_forecast/config/alerts/prometheus_rules.yaml` — 3 алерта: `MlForecastLatencyHigh` (avg_5m > 30s), `MlForecastStaleRateHigh` (> 20% за 15 мин), `MlForecastHealthDown` (health-check failure) — US-4 AC1/AC2
-- [ ] T079 [US4] Wire `recompute_daily_metrics` и `health_check` в Celery Beat schedule (T055)
+- [X] T079 [US4] Wire `recompute_daily_metrics` и `health_check` в Celery Beat schedule (T055)
 
 **Checkpoint**: dashboards read metrics; `inference_log` fills; alerts fire under simulated slow inference.
 
@@ -245,14 +245,14 @@ Feature code lives under `ml_forecast/` at repo root (per plan
 - [X] T088 [P] Add `ml_forecast/README.md` — ссылки на [spec.md](../specs/001-ml-forecast-service/spec.md), [plan.md](../specs/001-ml-forecast-service/plan.md), [quickstart.md](../specs/001-ml-forecast-service/quickstart.md); how to run, how to add new ticker
 - [X] T089 Append `ml_forecast` фрагмент в корневой `docker-compose.yaml` репозитория (единый стек с будущими backend / sentiment / data_collector)
 - [X] T090 Run full `pytest ml_forecast/tests` → all green; fix flakes if any
-- [ ] T091 Run `make smoke` end-to-end against local compose stack; capture log; зафиксировать failures as follow-up issues
-- [ ] T092 [P] Add GitHub Actions workflow `.github/workflows/ml_forecast.yml` — run `ruff`, `mypy`, `pytest -q`, `grpcio-tools` proto-lint on push/PR to paths `ml_forecast/**` or `specs/001-ml-forecast-service/contracts/**`
-- [ ] T093 Verify constitution re-check against final codebase (manual pass through `plan.md` Constitution Check) — update plan.md Constitution Check post-impl column if anything drifted
+- [X] T091 Run `make smoke` end-to-end against local compose stack; capture log; зафиксировать failures as follow-up issues
+- [X] T092 [P] Add GitHub Actions workflow `.github/workflows/ml_forecast.yml` — run `ruff`, `mypy`, `pytest -q`, `grpcio-tools` proto-lint on push/PR to paths `ml_forecast/**` or `specs/001-ml-forecast-service/contracts/**`
+- [X] T093 Verify constitution re-check against final codebase (manual pass through `plan.md` Constitution Check) — update plan.md Constitution Check post-impl column if anything drifted
 - [X] T094 [P] Implement Celery periodic task `artifact_rotation` в `ml_forecast/src/ml_forecast/storage/artifact_store.py` (раз в сутки в окне обслуживания): для каждой пары (ticker, timeframe) оставлять последний `production` + **минимум 3 последних `archived`** артефакта; более старые `archived` физически удалять (и файл, и row `model_registry.state=archived`) — закрывает FR-010 retention policy
 - [X] T095 [P] Contract test для advisory-флагов `ml_forecast/tests/contract/test_forecast_advisory_flags.py` — 3 кейса: (а) `model_stale=true` если модель обучена >14 торговых дней назад; (б) `outside_trading_hours=true` при искусственном patching `datetime.now()` на 22:00 МСК; (в) `anomalous_last_bar=true` при подсовывании бара с 10× средним объёмом. Закрывает I1/I2/I3
-- [ ] T096 Integration regression-gate test `ml_forecast/tests/integration/test_blue_chips_sc_targets.py` — обучает 5 production-моделей на {SBER, GAZP, LKOH, GMKN, ROSN} × {D1, M15} из `archive/`, assert: aggregate MAPE ≤ 5% (M15, horizon=4) и ≤ 3% (D1, horizon=1), directional accuracy ≥ 55%, win rate ≥ 52% в встроенном бэктесте на последних 6 мес. Закрывает SC-001/002/003 как regression-gate. Отмечен xfail на раннем этапе, unblock после US2
+- [X] T096 Integration regression-gate test `ml_forecast/tests/integration/test_blue_chips_sc_targets.py` — обучает 5 production-моделей на {SBER, GAZP, LKOH, GMKN, ROSN} × {D1, M15} из `archive/`, assert: aggregate MAPE ≤ 5% (M15, horizon=4) и ≤ 3% (D1, horizon=1), directional accuracy ≥ 55%, win rate ≥ 52% в встроенном бэктесте на последних 6 мес. Закрывает SC-001/002/003 как regression-gate. Отмечен xfail на раннем этапе, unblock после US2
 - [X] T097 [P] Create `ml_forecast/docs/runbook_forbidden_phrases.md` — процедура добавления/удаления фразы из `config/forbidden_phrases.yaml` (ответственный, список тестов для регрессии T029, как деплоится без рестарта сервиса через SIGHUP или периодический reload). Закрывает A2
-- [ ] T098 Update plan.md Constitution Check Principle III: уточнить, что multi-source guard (FR-014) реализуется в T023 (проверка `sources[] ≥ 2` на стороне ML-сервиса); плюс сверка advisory-флагов с Edge Cases в spec.md — галочку возле строки «факторы, деградации источников» подтвердить пост-impl
+- [X] T098 Update plan.md Constitution Check Principle III: уточнить, что multi-source guard (FR-014) реализуется в T023 (проверка `sources[] ≥ 2` на стороне ML-сервиса); плюс сверка advisory-флагов с Edge Cases в spec.md — галочку возле строки «факторы, деградации источников» подтвердить пост-impl
 
 ---
 
